@@ -1,0 +1,58 @@
+%% This file contains ?? slides
+\begin{slide}
+Caracterizando a rede de comunicação
+\begin{itemize} 
+ \item A comunicação é feita por pacotes em DS Links (multiplexação de canais)
+ \item Usa chaves assíncronas
+\end{itemize}
+Tabela de transmissão de dados
+\begin{center}
+\begin{tabular}{|r|c|c|c|c|} \hline
+ size & type 1 & type 2 & type 3 & type 4 \\ \hline \hline
+ 1 & 10,2 & 12,1 & 13,8 & 15,5 \\ \hline
+ 2 & 16,9 & 20,6 & 24,0 & 27,6\\ \hline
+ 3 & 23,5 & 28,9 & 34,2 & 39,5\\ \hline
+ 4 & 30,2 & 37,5 & 44,6 & 51,8 \\ \hline
+ 5 & 37,2 & 46,0 & 54,7 & 63,6 \\ \hline
+ 7 & 50,5 & 62,9 & 75,3 & 87,6 \\ \hline
+ 8 & 57,2 & 71,4 & 85,4 & 99,5 \\ \hline
+ 10 & 70,8 & 88,2 & 106 & 123 \\ \hline
+ 11 & 77,3 & 96,7 & 116 & 136 \\ \hline
+ 13 & 90,6 & 114 & 136 & 159 \\ \hline
+ 15 & 104 & 130 & 157 & 183 \\ \hline
+ 16 & 111 & 139 & 167 & 195 \\ \hline
+\end{tabular}
+\end{center}
+\end{slide}
+
+\begin{slide}
+{\small
+Conclusões
+\begin{itemize} 
+ \item É possível prever quando um escravo estará livre (tempo de processamento). 
+Calcular os tempos de transmissão para que os escravos sempre estejam livres. 
+\begin{displaymath}
+n = \frac{tempo\ de\ processamento}{tempo\ de\ trasmiss\tilde{a}o\ para\ outros}
+\end{displaymath}
+ \item No caso da GDU $n = \frac{200}{27} = 7,41 \Rightarrow$ \eng{speed-up} máximo
+ \item No caso do 2\eiro nível $ n = 2 $ satisfaz taxa máxima
+\end{itemize}}
+\end{slide}
+
+\begin{note}
+Aqui entra o \eng{slide} da implementação, que está feito em camadas, no 
+slide~\pageref{slide:implementa}.
+\end{note}
+
+\begin{slide}
+Conclusões finais
+\begin{itemize} 
+ \item A rede de decisões globais tem \eng{speed-up} máximo de 7,4
+ \item É capaz de processar uma RoI em 27$\mu$s = 7,4KHz (evento)
+ \item Isto não satisfaz o ambiente do segundo nível, porém é o máximo a ser 
+atingido com esta tecnologia
+ \item O \eng{speed-up} máximo para o 2\eiro nível é 3,4
+ \item Isto não satisfaz o funcionamento para este tipo de processamento, mas também
+ representa o máximo desta tecnologia
+\end{itemize}
+\end{slide}

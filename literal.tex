@@ -1,0 +1,352 @@
+\chapter{Revisão da Literatura}
+\label{chap:litera}
+\index{Revisão da Literatura}
+
+Neste capítulo faremos a revisão de algumas implementações e conceitos bem-sucedidos
+ na descrição e operação do 2\eiro nível de validação para o experimento ATLAS/LHC; 
+destacam-se a utilização de Redes Neurais como algorítmo para alguns Extratores de 
+Característica e unidades de Decisão Global e, ainda, a utilização de processamento 
+paralelo em algumas implementações.
+
+O motivo de tal direcionamento deste estudo deve-se à disponibilidade de 
+equipamento com processamento distribuído e bem-sucedidas implementações através de 
+nosso grupo (Colaboração Internacional CERN\-/\-COPPE\-/\-UFRJ) utilizando redes 
+neurais artificiais na  
+execução de extratores de características e unidades de decisão global para a 
+identificação de partículas.
+
+\section{Redes Neurais Artificiais e o processamento global para o segundo nível de
+\eng{trigger}}
+\index{Trigger!Level2!Redes Neurais aplicadas ao}
+\index{Redes Neurais!Porque utilizá-las no segundo nível de validação?}
+\label{sec:ANN_at_globaldec}
+
+Como elucidado na seção~\ref{sec:level2}, o segundo nível de \eng{trigger} deve combinar as características 
+vindas de diferentes subdetetores, de forma a aumentar a qualidade de classificação 
+das partículas. Neste estágio é melhor não realizar uma identificação baseada em 
+lógica exclusiva, pois poderemos diminuir a qualidade de decisão, mas gerar um outro 
+conjunto de variáveis, com probabilidades sobre a natureza da partícula 
+\cite{bock:ANN_at_level2}.
+
+Considere o exemplo simples\index{Redes Neurais!Exemplo na classifição de 
+partículas} onde dois subdetetores não são correlacionados, ou 
+seja, suas características extraídas são linearmente 
+independentes (LI-s)\index{Independência Linear}. A forma mais ineficiente de 
+fazer uma decisão é a de classificar a partícula segundo cada subdetetor e depois 
+perfazer um ``E'' lógico (AND) entre as classificações. Considere a ilustração 
+da figura~\ref{fig:fexes} com as diferentes características extraídas da cada 
+subdetetor (genérico), de tal forma que o nível de identificação para 2 tipos de 
+excitadores de RoI, elétrons e jatos,  se dá com uma sobreposição de 10\%, o
+ quer dizer que se traçarmos um corte para identificação em cada distribuição 
+teremos um erro mínimo de 10\%. Neste exemplo a classificação exclusiva 
+indicará somente 81\% de correção na identificação das partículas (o produto das 
+probabilidades).
+
+\begin{figure} 
+ \begin{center}
+ \caption{A distribuição de características para cada subdetetor genérico. Os 
+subsistemas são LI-s.} 
+ \label{fig:fexes} 
+ \includegraphics[type = eps, ext = .eps, scale = 0.9, bb = 0 0 464 243]{figs/fex_eg}
+ \end{center}
+\end{figure} 
+
+A decisão poderá ser melhor tomada se as duas características forem analisadas 
+juntas, em um espaço bidimensional (figura~\ref{fig:fex_bidim}). Cortando com um plano
+como é mostrado, ambos os tipos de partículas são 96\% corretamente classificadas. 
+Estes tipos de cortes são realizados também por estruturas de Redes Neurais 
+Artificiais utilizando a função identidade como a função de transferência para 
+os neurônios. Se o número de subdetetores crescer, a diferença entre estas duas 
+maneiras de classificação ficará mais explícita, como é possível observar na 
+tabela~\ref{tab:efici_ann}. Neste teste foi considerado que todas as características 
+foram extraídas de subsistemas LI-s, assim sendo, não houve necessidade da utilização de
+camadas escondidas.
+
+\begin{figure} 
+ \begin{center}
+ \caption{Exemplo de classificação num espaço bidimensional} 
+ \label{fig:fex_bidim} 
+ \includegraphics[type = eps, ext = .eps, scale = 0.85, bb = 0 0 485 216]{figs/fex_bid}
+ \end{center}
+\end{figure} 
+
+\begin{table}
+ \begin{center}
+ \caption{Tabela de eficiências para uma classificação utilizando um ``E'' lógico e 
+Redes Neurais Artificiais simples, sem camadas escondidas.}
+ \label{tab:efici_ann}
+ \begin{tabular}{|c||c|c|}
+ \hline
+ Número de Detetores & Classificação com ``E'' lógico & Classificação com ANN \\ 
+ \hline \hline
+ 1 & 90\% & 90\% \\ \hline 
+ 2 & 81\% & 96.5\% \\ \hline 
+ 3 & 73\% & 98.8\% \\ \hline 
+ 4 & 65\% & 99.4\% \\ \hline 
+ 5 & 59\% & 99.8\% \\ \hline 
+ \end{tabular}
+ \end{center}
+\end{table}\index{Redes Neurais!Tabela comparativa com se\-pa\-ra\-ção clás\-si\-ca}
+
+Embora pareça simples, a tarefa para a identificação de partículas é um processo 
+que envolve características extraídas dos dados de um número de subdetetores menor 
+que o número de características\footnote{O número de detetores está entre 4 e 6 e o 
+de características, entre 12 e 15.}, portanto, algumas destas são linearmente 
+dependentes (LD-s)\index{Dependência Linear}. Para máxima eficiência na separação com variáveis LD-s a 
+utilização de camadas escondidas é necessária. A figura~\ref{fig:LD_vars_and_ANNS} 
+mostra o resultado de separação obtida sobre dados LD-s utilizando 3, 2 ou nenhum 
+neurônio na camada escondida.
+
+\begin{figure} 
+ \begin{center}
+ \caption{Classificação em um espaço de variáveis linearmente dependente.} 
+ \label{fig:LD_vars_and_ANNS} 
+ \includegraphics[type = eps, ext = .eps, scale = 0.8, bb = 0 0 511 661]{figs/annhid}
+ \end{center}
+\end{figure} 
+
+\paragraph{Conclusão:} O processamento de Decisão Global terá ótima eficiência se 
+utilizarmos Redes Neurais Artificiais (ANN-s) ao invés de algoritmos basedos em 
+classificação exclusiva, devido ao número de subsistemas e variáveis envolvidas. Em 
+razão da dependência entre as variáveis dos diversos subsistemas parece inevitável 
+a utilização de ao menos uma camada escondida em uma rede neural simples, 
+diretamente conectada (\eng{feed forward}).
+
+Em particular, resultados com redes na configuração 12-6-4, isto é, 12
+entradas, 6 neurônios na camada escondida e 4 na de saída têm se mostrado satisfatórios onde
+tempo de processamento e eficiência são fatores dominantes como é possível ver em 
+\cite{sx:gldec}. O número de saídas é fortemente dependente da quantidade de 
+partículas diferentes que se deseja identificar no processamento da RoI. No 
+caso específico supracitado a identificação se fez por uma separação entre 4 
+diferentes tipos de partículas (elétrons, jatos, píons e múons).
+
+Devemos destacar ainda que redes neurais são capazes de encontrar correlações em 
+espaços multi-dimensionais ainda que na presença de grande quantidade de ruído. 
+Redes Neurais artificiais também podem ser muito competitivas onde preço e robustez 
+são fatores delimitantes.
+
+\section{A utilização de ambientes de processamento distribuído para o segundo nível de
+ \eng{trigger}}
+\index{Paralelismo!Porque utilizar?}
+
+Devido às altas taxas de eventos a que será submetido o segundo nível de 
+\eng{trigger} (muitos Gigabytes por segundo e uma latência máxima presumida de 1ms), a 
+decomposição do problema através de paralelização das atividades 
+parece apontar um caminho para a solução. Esta
+paralelização pode ser implementada em 2 níveis:
+\begin{enumerate} 
+ \item Na paralelização de uma atividade simples como a extração de uma 
+característica ou a identificação de uma partícula, de modo a reduzir a latência do 
+processamento localizado; e
+ \item Na paralelização de uma classe de atividades ou de todo o processamento para 
+este nível, por exemplo, a extração de 
+características utilizando uma \eng{farm} de processadores operando em paralelo 
+sobre dados de diferentes RoI-s, reduzindo a latência do processamento como um todo e
+ não localmente como no item anterior.
+\end{enumerate}
+
+Os dois tipos de paralelização levam a diferentes enfoques de 
+implementação\index{Paralelismo!enfoques}: no 
+primeiro teremos um algoritmo baseado na taxa de dados (\eng{Data 
+Driven})\index{Paralelismo!Data
+Driven Approach}  de entradab visto que a 
+paralelização é feita de modo a reduzir as latências individuais, reduzindo  
+a latência global do processo para cada evento. Nesta implementação deve-se utilizar  
+uma arquitetura capaz de sustentar a taxa de dados, como em 
+\cite{bock:cpp_at_level2}.
+
+No segundo enfoque, a latência dos processos individuais não é demasiado importante, 
+visto que poderemos compensar uma maior latência com a utilização de mais 
+processadores naquele nível de processamento. Este tipo de implementação é conhecido
+ como \eng{Asynchronous Processor Farms 
+Implementation}\index{Paralelismo!Asynchronous Approach} ou Implementação em 
+\eng{farms} de processadores assíncronos. O assincronismo vem do fato das atividades
+ paralelas serem independentes quanto ao tempo de execução entre si, podendo ser 
+executadas totalmente livres do final (ou começo) de processamento de qualquer evento
+ou dado em qualquer outra unidade de processamento.
+
+No caso do segundo nível em específico\index{Paralelismo!Para o segundo nível}, 
+podemos enxergar paralelismo em  
+algumas das atividades realizadas e no processamento como um todo também. Para 
+algoritmos de extração de características em calorímetros, técnicas de processamento 
+paralelo  
+assíncrono têm se mostrado eficientes no atendimento das taxas de entrada do 
+experimento, como é possível ler em \cite{sx:fe}. 
+
+Para as unidades de Decisão Global, a utilização de redes neurais artificiais têm 
+mostrado vantagem, como explicita a seção~\ref{sec:ANN_at_globaldec}. Redes Neurais 
+são algoritmos altamente paralelizáveis por serem baseados em multiplicações e somas 
+vetoriais totalmente independentes ao nível de cada camada\footnote{É claro que os 
+resultados da camada de ordem $n$ dependem dos resultados da camada de ordem 
+$n-1$ e, sendo assim, não podemos tornar isto concorrente, ou seja, o processamento 
+ainda deve ser feito camada a camada.}. Ainda, otimizações podem ser realizadas a 
+nível assíncrono utilizando-se mais de uma rede para o processamento global.
+
+Por fim, as atividades do segundo nível como um todo são paralelizáveis visto a 
+independência entre diferentes eventos. Estes podem ser processados 
+independentemente (e, desta forma, assíncronamente) uns dos outros, sem perda 
+de informações, de forma que a latência 
+para cada evento possa ser aumentada proporcionalmente do valor alvo de 1ms para 
+outro valor maior, dependendo de quantos forem os nós de processamento adicionados. 
+Este enfoque,  
+é claro, reduz a necessidade de otimização dos subníveis de processamento internos 
+ao segundo nível, como é o caso do enfoque baseado na taxa de dados (\eng{Data Driven 
+Approach}).
+
+\subsection{DSP-s}
+\index{DSP-s!Utilidade}
+
+\eng{Digital Signal Processors} (processadores digitais de sinais) não são mais do 
+que rápidos processadores matemáticos que executam funções aritméticas básicas e 
+outras funções complexas com poucos pulsos de \eng{clock}. Alguns DSP-s como o 
+ADSP-21020 da Analog Devices podem processar em apenas 1 ciclo de \eng{clock} uma multiplicação 
+entre números reais(ou pontos flutuantes).
+
+Vantagens na utilização de DSP-s são explícitas quando o processamento depende do 
+cálculo de muitas variáveis. No caso do processamento para o segundo 
+nível, existem muitos subníveis em que é possível atingir uma redução da latência de
+processamento utilizando-se DSP-s como processadores centrais do subnível \cite{bock:cpp_at_level2}.
+Este é o caso da maioria dos extratores de característica e das unidades de decisão 
+global, se desenhados como Redes Neurais Artificiais.
+
+\section{Arquiteturas para o segundo nível de \eng{trigger}}
+\index{Trigger!Level2!Arquiteturas}
+
+Limitações de tamanho e custo podem nos levar a 3 possíveis arquiteturas mutuamente 
+exclusivas para o segundo nível de processamento\cite{level2:tsr}:
+\begin{itemize} 
+ \item{\bf Modelo A:} Utiliza uma partição local/global do segundo nível de processamento, 
+com processamento até a extração de características (inclusive) sendo realizado com 
+arquitetura baseda no 
+enfoque \eng{data-driven}, enquanto que o processamento global utiliza uma \eng{farm}
+ de processadores utilizando o enfoque de processamento assíncrono;
+ \item{\bf Modelo B:} Utiliza uma partição local/global de todo o processamento do 
+segundo nível, fazendo uso de várias \eng{farms} feitas de processadores idênticos ou
+similares com extração de características paralela para cada subdetetor e para cada
+RoI;
+ \item{\bf Modelo C:} Uma única \eng{farm} de processadores realizando, cada um, o 
+processamento relativo a um evento inteiro.
+\end{itemize}
+
+Estas arquiteturas seguem alguns critérios de funcionamento tais como não possuir 
+latência de operação\footnote{Tempo de demora entre a decisão do 1\eiro nível e a 
+decisão do segundo.} superior a 2 ms (modelo A) e 10 ms (modelos B e C); caso esta 
+ultrapasse, o supervisor deve se responsabilizar por abortar a operação de validação 
+para este evento. Estes critérios podem ser melhor estudados em 
+\cite{level2:tsr} e \cite{level2:urd}.
+
+\subsection{Modelo A}
+\index{Trigger!Level2!Arquiteturas-Modelo A}
+
+Neste modelo A, a informação de cada RoI é comunicada pelo \eng{RoI Builder} às 
+ROB-s (isto ainda é no 1\eiro nível). Os dados são então ``empurrados'' através do 
+pré-processamento e coleção de RoI-s para a extração de características. Nesta parte
+de operação as unidades de processamento (acopladas, formando um único subsistema) 
+deverão suportar a mais alta taxa de eventos possível. As operações são totalmente 
+independentes para os dados de diferentes subdetetores. Para cada RoI, um vetor de 
+dados é preparado contendo as características extraídas e um cabeçalho de 
+identificação. Depois da extração de características, estes vetores são encaminhados
+ a uma chave que é responsável por distribuí-los pelos processadores globais. A 
+figura~\ref{fig:mod_a} pode ser elucidativa quanto ao mencionado nesta seção.
+
+\begin{figure} 
+ \begin{center}
+ \caption{Um diagrama esquemático para o modelo arquitetural A do segundo nível de 
+validação.} 
+ \label{fig:mod_a} 
+ \input{picts/model_a.pic}
+ \end{center}
+\end{figure} 
+
+\subsection{Modelo B}
+\index{Trigger!Level2!Arquiteturas-Modelo B}
+
+Neste modelo B, a informação de cada RoI é passada ao supervisor que controla {\bf 
+todo} o fluxo de dados. Os dados de cada RoI são passados dos ROB-s através do 
+pré-processamento e coleção de RoI-s a uma chave que se encarrega de passar os dados
+ relativos a cada RoI para extratores de características. Nesta fase, os subsistemas
+ relativos a cada subdetetor são totalmente independentes, podendo ter seus próprios
+ supervisores locais. As características 
+extraídas são, então, passadas através de outra chave (que reúne as características 
+extraídas de cada subdetetor sobre uma mesma RoI), que repassa estes dados às 
+unidades de decisão global. A figura~\ref{fig:mod_b} mostra um diagrama ilustrativo.
+
+\begin{figure} 
+ \begin{center}
+ \caption{Um diagrama esquemático para o modelo arquitetural B do segundo nível de 
+validação.} 
+ \label{fig:mod_b} 
+ \input{picts/model_b.pic}
+ \end{center}
+\end{figure} 
+
+\subsection{Modelo C}
+\index{Trigger!Level2!Arquiteturas-Modelo C}
+
+Neste modelo C, a informação é passada a um supervisor central que dedica um dos 
+processadores de uma \eng{farm} homogênea a todo o processamento do evento. Este 
+processador controla todo o fluxo de dados da RoI pelos ROB-s e pelas unidades de 
+pré-processamento e coleção de RoI-s. Os dados, depois de coletados, seguem a uma 
+chave que os repassa ao devido processador de evento, para que este realize a extração
+ de características e a decisão global. A figura~\ref{fig:mod_c} mostra um diagrama 
+ilustrativo.
+
+\begin{figure} 
+ \begin{center}
+ \caption{Um diagrama esquemático para o modelo arquitetural C do segundo nível de 
+validação.} 
+ \label{fig:mod_c} 
+ \input{picts/model_c.pic}
+ \end{center}
+\end{figure} 
+
+\section{Concluindo alguns pontos...}
+\index{Revisão da Literatura!conclusão}
+
+É possível utilizar ANN-s para desenhar alguns subsistemas do segundo nível de 
+validação, em especial Unidades de Decisão Global e Extratores de Características 
+para Calorímetros. Estas redes especializadas no reconhecimento de padrões podem ter sua 
+latência reduzida se utilizarmos computação distribuída uma vez que seu algoritmo é 
+altamente paralelizável. Ainda, se utilizarmos DSP-s como processadores centrais de 
+alguns destes subsistemas poderemos nos beneficiar de sua alta performance 
+computacional em algoritmos envolvendo repetidos cálculos.
+
+A paralelização da aplicação (ainda que complexa) poderá acontecer em 2 instâncias: 
+na primeira,  
+local, há uma paralelização buscando a otimização de um algoritmo utilizado em 
+um subsistema, de forma a atender às taxas de entrada e latência máximas deste 
+subsistema; chamamos este enfoque de \eng{data-driven} uma vez que os dados fluirão 
+por estes subsistemas sem restrições ou controle, já que estes suportarão as taxas de 
+entrada máximas. Na segunda instância, global, acontece uma paralelização de subsistemas 
+idênticos (exemplo: Extratores de Característica) de forma que a latência máxima para
+cada evento seja aumentada proporcionalmente ao número de processadores 
+anexados. Em particular a paralelização em primeira instância não será aqui 
+utilizada visto que equipamento específico para cada subsistema paralelizável é 
+requerido. Utilizaremos, no entanto, o conceito de paralelização global, 
+ou em segunda instância como veremos mais a frente.
+
+Existem vários modelos para a implementação do segundo nível, cada um com suas 
+vantagens e desvantagens, embora de uma forma geral bem plausíveis. Para fins 
+e objetivos deste projeto, no entanto, nos concentraremos no modelo B. O modelo A 
+requer utilização de processamento  
+diversificado para a camada de pré-processamento, coleção de RoI-s e Extração de 
+Características, o que não será possível, pois somente dispomos de 16 processadores em 
+nossa máquina (vê-la-emos em detalhes mais adiante) que terão seus potenciais 
+subaproveitados se os utilizarmos em uma paralelização local ou em primeira 
+instância.
+
+O modelo C exige um chaveamento a partir dos ROB-s utilizando uma chave muito rápida
+(tecnologia ATM), que também não se encontra em nosso poder. A arquitetura B, no 
+entanto, nos  
+parece mais adptável ao equipamento disponível (TELMAT TN310) e que queremos 
+avaliar; sendo assim, 
+tentaremos abordar o problema e construir o simulador baseado neste desenho. 
+Lembramos que queremos atingir 2 metas aqui: a primeira é construir um 
+sistema de validação, a segunda, testar a tecnologia contida em uma TN310 de 
+forma a avaliar globalmente arquitetura e equipamento para a realização do segundo 
+nível de validação para o experimento ATLAS\-/\-LHC.
+ 
+No que se segue exporemos em detalhes alguns dos conceitos, materiais e métodos 
+utilizados neste projeto, isto é, Redes Neurais Artificiais, a máquina 
+mencionada - Telmat TN310, os dados utilizados e alguns conceitos de paralelismo.
+

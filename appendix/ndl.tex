@@ -1,0 +1,325 @@
+\chapter{Exemplo comentado de um arquivo de descri\-ção de redes}
+\label{ap:ndl}
+
+Este apêndice transcreve o arquivo do PC hospedeiro em {\tt 
+C:\bsl hardfile\bsl tn310-2p.ndl} que contém informação de hardware para a configuração do 
+sistema TN310 utilizando somente 2 dos 16 nós de processamento baseados em HTRAM. Os
+comentários virão em letras em letras comuns como qualquer texto deste documento, 
+enquanto que o texto do arquivo estará em {\tt letra tipo máquina-de-escrever, como 
+aqui.} 
+
+Neste tipo de arquivo os comentários começam com {\tt ``--''} e uma vez identificado
+ tal seqüência de caracteres todos os dados até o final da linha são ignorados.
+
+\begin{verbatim}
+
+-------------------------------------------------------------------------- 
+-- TN310 Machine content --                                                 
+-------------------------------------------------------------------------- 
+                                                                           
+-- Host 2008: EDGEDevice8                                                  
+--		Card 0 ,  Entry on EXTERNAL  by EDGE                                 
+--		Link[0] (, Data Boot Link)                                           
+-------------------------------------------------------------------------- 
+-- Host 3000: EDGEDevice1000                                               
+--		Card 0 ,  Entry on EXTERNAL  by EDGE                                 
+--		Link[Up] (, Control link)                                            
+-------------------------------------------------------------------------- 
+                                                                           
+-- Mother Card Number: 0 :                                                 
+                                                                           
+-- Node  0:  Dsp[0]                                                        
+-- Node  2:  Dsp[1]                                                        
+                                                                           
+-------------------------------------------------------------------------- 
+-- Processor(s) generals informations --                                   
+-- Group Dsp : -- 2 Processor(s) 'Dsp': T9000                              
+--                 Type DSP , 8M , 20MHz, Size 4 , Id:, SubType:           
+-------------------------------------------------------------------------- 
+                                                                           
+-------------------------------------------------------------------------- 
+-- Network description Language file for a TN310 system.                   
+-- File created by the NDL Generator for TN series - version 2.0           
+-- (c) Copyright TELMAT Multinode - february 1996                          
+-------------------------------------------------------------------------- 
+\end{verbatim}
+
+Esta parte é gerada pelo programa {\tt c:\bsl t9bin\bsl tmndl.exe} durante a confecção do 
+arquivo NDL. Ela descreve de uma forma simplificada a rede a ser descrita. O 
+programa em questão escreve um arquivo NDL a partir de um arquivo MCF, padrão criado
+pela TELMAT para simplificar a confecção de arquivos NDL. Entende-se que as 
+informações contidas em arquivos MCF são instâncias simplificadas da descrição da 
+rede que serão desenvolvidas no arquivo NDL. As informações acima, são as únicas que
+ um arquivo MCF carrega. Todo o resto é desenvolvido pelo programa {\tt tmndl.exe}.
+
+A descrição em questão abrangerá a utilização de 2 nós de processamento HTRAM cujos 
+nomes são Dsp[0] e Dsp[1]. Cada nó do tipo Dsp possui um transputer, 8Megabytes de 
+memória RAM, opera a 20MHz e é tamanho 4.
+
+Inclue algumas definições utilizadas no decorrer do arquivo, como o valor para K ou 
+M.
+\begin{verbatim}
+#INCLUDE "stdndl.inc"
+\end{verbatim}
+
+Define algumas variáveis como os endereços das diversas áreas da memória em {\tt 
+DspMemoryFlags} e a configuração da memória RAM on-chip que o transputer T9000 
+possui, neste caso para 8Kilobytes memória rápida e 8Kilobytes de cache.
+\begin{verbatim}
+VAL SysMem  IS 4*K :  -- Size of system RAM                         
+VAL UsrBase IS #80000000 :  -- Start address of user RAM            
+                                                                    
+VAL LinkSpeedMultiply IS 10 :                                       
+VAL LinkSpeedDivide IS 1 :                                          
+VAL ControlSpeedDivide IS 8 :                                       
+                                                                    
+--                                                                  
+-- Nodes Definitions                                                
+--                                                                  
+                                                                    
+VAL DspCacheSize IS 8 :                                             
+VAL DspMem IS (8*M) - SysMem :  -- Size of user RAM                 
+VAL DspSysBase IS UsrBase+DspMem :  -- Start address of system RAM  
+VAL DspMemoryFlags IS [[DspSysBase, SysMem, RAM+SYSTEM],            
+                      [UsrBase, DspMem, RAM+USER],                  
+                      [#00000000, 32, RAM+RESERVED],                
+                      [#7FFE0000, #20000, ROM]] :                   
+[2]NODE Dsp :                                                       
+                                                                    
+VAL HOST.CONNECTION IS 16 :	-- Data Link to the Host System       
+                                                                    
+VAL DIR IS 4 :  	-- Number of directions                           
+VAL C104LinkSpeedMultiply IS 20 :                                   
+VAL C104LinkSpeedDivide IS 1 :                                      
+ARC HostLink :                                                      
+[2][DIR] ARC LinkDsp :                                              
+\end{verbatim}
+
+Declara as chaves que utilizará na rede.
+\begin{verbatim}
+-- Switch declarations <Card 0>
+NODE ControlSwitch0 :
+NODE ControlPart0 :
+NODE DataPart0Dir0 :
+NODE DataPart0Dir1 :
+NODE DataPart0Dir2 :
+NODE DataPart0Dir3 :
+[DIR]NODE DataSwitch0 :
+--
+\end{verbatim}    
+
+Algumas características das chaves.
+\begin{verbatim}
+NETWORK
+  DO
+    -- Set default attributes
+    SET DEFAULT (link.speed.multiply, link.speed.divide, control.speed.divide :=
+                 LinkSpeedMultiply , [LinkSpeedDivide], [ControlSpeedDivide])
+
+    --
+    -- Set router attributes for Switches
+    --
+    --
+    -- ControlSwitch0 initialisation 
+    --
+    SET ControlSwitch0 (type := "C104")
+    SET ControlSwitch0 (link.speed.multiply := C104LinkSpeedMultiply )
+    DO J = 0 FOR 32
+      SET ControlSwitch0 (link.speed.divide[J] := C104LinkSpeedDivide )
+    SET ControlSwitch0 (link.groups := [[0,1],[2,3],[4,5],[6,7]])
+    --
+    -- Control Partition of Controlswitch <Card 0>
+    SET ControlPart0 (type := "C104PARTITION")
+    SET ControlPart0 (node := ControlSwitch0)
+    SET ControlPart0 (links := [[20,20],[21,21],[28,28],[31,31]])
+    --
+    -- Data Partition 0 of Control switch <Card 0>
+    SET DataPart0Dir0 (type := "C104PARTITION")
+    SET DataPart0Dir0 (node := ControlSwitch0)
+    SET DataPart0Dir0 (links := [[8,8],[0,1],[HOST.CONNECTION,HOST.CONNECTION]])
+    --
+    -- Data Partition 1 of Control switch <Card 0>
+    SET DataPart0Dir1 (type := "C104PARTITION")
+    SET DataPart0Dir1 (node := ControlSwitch0)
+    SET DataPart0Dir1 (links := [[9,9],[2,3]])
+    --
+    -- Data Partition 2 of Control switch <Card 0>
+    SET DataPart0Dir2 (type := "C104PARTITION")
+    SET DataPart0Dir2 (node := ControlSwitch0)
+    SET DataPart0Dir2 (links := [[10,10],[4,5]])
+    --
+    -- Data Partition 3 of Control switch <Card 0>
+    SET DataPart0Dir3 (type := "C104PARTITION")
+    SET DataPart0Dir3 (node := ControlSwitch0)
+    SET DataPart0Dir3 (links := [[11,11],[6,7]])
+    --
+    --
+
+    -- Set the (Site 0/1) intervals for Dir 0 <Card 0> 
+    SET DataPart0Dir0 (interval.separator[0] := 0) 
+    SET DataPart0Dir0 (link.select[0] := 8) 
+    SET DataPart0Dir0 (delete[8] := TRUE) 
+    SET DataPart0Dir0 (interval.separator[1] := 1) 
+
+    -- Set the (other Site) intervals for Dir 0 <Card 0>
+    SET DataPart0Dir0 (link.select[1] := 0) 
+    SET DataPart0Dir0 (interval.separator[2] := 2) 
+
+    -- Set the (Site 0/1) intervals for Dir 1 <Card 0> 
+    SET DataPart0Dir1 (interval.separator[0] := 0) 
+    SET DataPart0Dir1 (link.select[0] := 9) 
+    SET DataPart0Dir1 (delete[9] := TRUE) 
+    SET DataPart0Dir1 (interval.separator[1] := 1) 
+
+    -- Set the (other Site) intervals for Dir 1 <Card 0>
+    SET DataPart0Dir1 (link.select[1] := 2) 
+    SET DataPart0Dir1 (interval.separator[2] := 2) 
+
+    -- Set the (Site 0/1) intervals for Dir 2 <Card 0> 
+    SET DataPart0Dir2 (interval.separator[0] := 0) 
+    SET DataPart0Dir2 (link.select[0] := 10) 
+    SET DataPart0Dir2 (delete[10] := TRUE) 
+    SET DataPart0Dir2 (interval.separator[1] := 1) 
+
+    -- Set the (other Site) intervals for Dir 2 <Card 0>
+    SET DataPart0Dir2 (link.select[1] := 4) 
+    SET DataPart0Dir2 (interval.separator[2] := 2) 
+
+    -- Set the (Site 0/1) intervals for Dir 3 <Card 0> 
+    SET DataPart0Dir3 (interval.separator[0] := 0) 
+    SET DataPart0Dir3 (link.select[0] := 11) 
+    SET DataPart0Dir3 (delete[11] := TRUE) 
+    SET DataPart0Dir3 (interval.separator[1] := 1) 
+
+    -- Set the (other Site) intervals for Dir 3 <Card 0>
+    SET DataPart0Dir3 (link.select[1] := 6) 
+    SET DataPart0Dir3 (interval.separator[2] := 2) 
+
+    -- Set the (Host system Data boot link) intervals 
+    SET DataPart0Dir0 (link.select[2] := HOST.CONNECTION)
+    SET DataPart0Dir0 (delete[HOST.CONNECTION] := TRUE )
+    SET DataPart0Dir0 (interval.separator[3] := 3)
+
+    --
+    -- Data switches initialisations of <Card 0>
+    --
+    -- DataSwitch0 initialisation 
+    --
+    DO I = 0 FOR DIR
+      DO
+        SET DataSwitch0[I] (type := "C104")
+        SET DataSwitch0[I] (link.speed.multiply := C104LinkSpeedMultiply )
+        DO J = 0 FOR 32
+          SET DataSwitch0[I] (link.speed.divide[J] := C104LinkSpeedDivide )
+    SET DataSwitch0[0] (link.groups :=  [[0,1]])
+    SET DataSwitch0[1] (link.groups :=  [[0,1]])
+    SET DataSwitch0[2] (link.groups :=  [[0,1]])
+    SET DataSwitch0[3] (link.groups :=  [[0,1]])
+
+        -- Set the (Site 0/1) intervals of <Card 0>
+    SET DataSwitch0[0] (interval.separator[0] := 0 )
+    SET DataSwitch0[0] (link.select[0] := 0 )
+    SET DataSwitch0[1] (interval.separator[0] := 0 )
+    SET DataSwitch0[1] (link.select[0] := 0 )
+    SET DataSwitch0[2] (interval.separator[0] := 0 )
+    SET DataSwitch0[2] (link.select[0] := 0 )
+    SET DataSwitch0[3] (interval.separator[0] := 0 )
+    SET DataSwitch0[3] (link.select[0] := 0 )
+    SET DataSwitch0[0] (interval.separator[1] := 1 )
+    SET DataSwitch0[1] (interval.separator[1] := 1 )
+    SET DataSwitch0[2] (interval.separator[1] := 1 )
+    SET DataSwitch0[3] (interval.separator[1] := 1 )
+
+        -- Set the (other Sites) intervals of <Card 0>
+    SET DataSwitch0[0] (link.select[1] := 2)
+    SET DataSwitch0[0] (delete[2] := TRUE)
+    SET DataSwitch0[0] (interval.separator[2] :=2 )
+    SET DataSwitch0[1] (link.select[1] := 2)
+    SET DataSwitch0[1] (delete[2] := TRUE)
+    SET DataSwitch0[1] (interval.separator[2] :=2 )
+    SET DataSwitch0[2] (link.select[1] := 2)
+    SET DataSwitch0[2] (delete[2] := TRUE)
+    SET DataSwitch0[2] (interval.separator[2] :=2 )
+    SET DataSwitch0[3] (link.select[1] := 2)
+    SET DataSwitch0[3] (delete[2] := TRUE)
+    SET DataSwitch0[3] (interval.separator[2] :=2 )
+
+        -- Set the (Host System Data boot link) intervals
+    SET DataSwitch0[0] (link.select[2] := 0)
+    SET DataSwitch0[0] (interval.separator[3] := 3 )
+\end{verbatim}
+
+Inicializa e define algumas características dos nós de processamento, entre elas o 
+nó raiz e e quantidade de memória disponível em cada nó.
+\begin{verbatim}
+    -- Set Processors default attributes
+    DO I = 0 FOR 2
+      DO
+        SET Dsp[I] (type,memory := "T9000",DspMemoryFlags)
+        SET Dsp[I] (memconfig := "d4-8-20.mem")
+        SET Dsp[I] (cachesize := DspCacheSize)
+        -- SET Dsp[I] (local.rom,pmi.config.inrom,cache.config.inrom,linkset.inrom
+                        := TRUE,TRUE,TRUE,TRUE) 
+    --
+    --
+    SET Dsp[0] (root := TRUE)
+    --
+\end{verbatim}
+
+Conecta os processadores e chaves através de \eng{links} de controle e \eng{links} de
+ dados. Depois finaliza com a instrução {\tt ``:''}.
+\begin{verbatim}
+    -- Initialize Host Device(s)
+    --
+    -- CONTROL PIPELINE CONNECTIONS
+    --
+    CONNECT host[control] TO	ControlSwitch0[control.up]
+
+    -- Control connections on processors <Card 0>
+    CONNECT ControlSwitch0[control.down] TO	ControlPart0[link][31]
+    CONNECT ControlPart0[link][20] TO	Dsp[0][control.up]
+    CONNECT ControlPart0[link][21] TO	Dsp[1][control.up]
+    CONNECT ControlPart0[link][28] TO	DataSwitch0[0][control.up]
+    DO I = 0 FOR (DIR-1)
+      CONNECT DataSwitch0[I][control.down] TO	DataSwitch0[I+1][control.up]
+
+    --
+    -- DATA TREE CONNECTIONS 
+    --
+    CONNECT host[data] TO	DataPart0Dir0[link][HOST.CONNECTION] WITH	HostLink
+    --
+    DO I = 0 FOR DIR
+      DO
+        --
+        IF
+          I=0
+            CONNECT DataPart0Dir0[link][8] TO Dsp[0][link][I] WITH LinkDsp[0][I]
+          I=1
+            CONNECT DataPart0Dir1[link][9] TO Dsp[0][link][I] WITH LinkDsp[0][I]
+          I=2
+            CONNECT DataPart0Dir2[link][10] TO Dsp[0][link][I] WITH LinkDsp[0][I]
+          I=3
+            CONNECT DataPart0Dir3[link][11] TO Dsp[0][link][I] WITH LinkDsp[0][I]
+          TRUE
+            SKIP
+        CONNECT DataSwitch0[I][link][2] TO Dsp[1][link][I] WITH LinkDsp[1][I]
+        --
+        -- Connections between Ctrl and Data Switches
+    CONNECT DataPart0Dir0 [link][0] TO DataSwitch0[0][link][0]
+    CONNECT DataPart0Dir0 [link][1] TO DataSwitch0[0][link][1]
+    CONNECT DataPart0Dir1 [link][2] TO DataSwitch0[1][link][0]
+    CONNECT DataPart0Dir1 [link][3] TO DataSwitch0[1][link][1]
+    CONNECT DataPart0Dir2 [link][4] TO DataSwitch0[2][link][0]
+    CONNECT DataPart0Dir2 [link][5] TO DataSwitch0[2][link][1]
+    CONNECT DataPart0Dir3 [link][6] TO DataSwitch0[3][link][0]
+    CONNECT DataPart0Dir3 [link][7] TO DataSwitch0[3][link][1]
+    --
+    -- Hosts connections to Edges
+    --
+:
+-- End of File
+\end{verbatim}
+
+
+
+

@@ -1,0 +1,348 @@
+\chapter{GDU em InMOS C para 1 nó HTRAM}
+\label{ap:global1}
+
+Neste apêndice estaremos descrevendo a unidade de decisões globais implementada para
+1 nó HTRAM utilizando InMOS C para o sistema TN310. O arquivo de configuração não 
+será exibido visto sua simplicidade. Os comentários estão em \raw{letras comuns}, 
+junto com o resto do programa.
+
+\begin{verbatim}
+#include <stdio.h>
+#include <stdlib.h>
+#include <time.h>
+#include <process.h>
+#include <math.h> 
+
+/*=================================================================*/
+/* Diretivas DEFINE do programa, incluindo nomes e constantes      */
+/*=================================================================*/
+#define NUMERO_DE_EVENTOS 5000
+#define ARQUIVO_DE_EVENTOS "tst_resu\\4mu\\input.txt"
+#define ARQUIVO_DE_PESOS "tst_resu\\4mu\\dump.txt"
+#define TABELA_PARA_TANH "tanh.txt"
+#define ARQUIVO_DE_NORMALIZACAO "tst_resu\\4mu\\normal.txt"
+#define ARQUIVO_DE_SAIDA ".\\4mu.txt"
+
+/* Tipos estruturados globais */
+struct _hidd_ /* Estruturas para os neurônios da hidden layer */
+{
+ float threshold;
+ float peso[12];
+ float saida;
+};
+
+struct _outlay_ /* Estruturas para os neurônios da camada de saída */
+{
+ float threshold;
+ float peso[12];
+ float saida;
+ };
+
+/* Declaração de protótipos das funções utilizadas na aplicação */
+float ativa(float valor, float *tb, float threshold); /* Função que
+ calcula tanh por look-up */
+void leia_tabela(float *tb);
+void leia_dumps(struct _hidd_ *hd, struct _outlay_ *ol);
+void leia_evento(FILE *fev, float *ev, int linha);
+void leia_norma(float *norm);
+
+
+/*========================================*/
+/* Programa Principal                     */
+/*========================================*/
+int main(void)
+{
+ /* Arquivos utilizados por main */
+ FILE *outnet, *fevento;
+
+ /* Declaraçao de constantes utilizadas por main */
+
+ const int NEVENTOS = NUMERO_DE_EVENTOS ; /* O número de eventos
+ a serem analisados */
+
+ /* Declaração de variáveis locais a main */
+ int a,i,j,k; /* variáveis de controle */
+ float evento[12]; /* O evento corrente */
+ float normal[12]; /* O vetor de normalização */
+ struct _hidd_ hidd[12]; /* Os neurônios da camada escondida */
+ struct _outlay_ outlay[4]; /* Os neurônios da camada de saída */
+ float tab[20001]; /* A tabela de valores para tanh */
+ clock_t ev_tempo; /* variável de controle para o tempo do evento atual,
+ em pulsos de clock */
+ float tempo = 0.0; /* Acumulador para o tempo, em segundos */ 
+
+ /* Avisa ao usuário que ele deve resetar a TN310
+                                  antes de começar. */
+ printf("Voce \"resetou\" a TN310 antes de disparar a
+                                      aplicação ???\n");
+ printf("Se nao, selecione file/exit no menu acima e
+                                  comece de novo...\n");
+ printf("\t<<<<<<<<<<<< Deseja continuar ?
+                  Tecle <enter> >>>>>>>>>>>>\n");
+ getchar();
+
+ /* Lê tabela com valores das tangentes hiperbólicas */
+ leia_tabela(tab);
+
+ /* Lê arquivos de pesos */
+ leia_dumps(hidd,outlay);
+
+ /* Lê o arquivo com os valores de normalização */
+ leia_norma(normal);
+
+ if((fevento=fopen(ARQUIVO_DE_EVENTOS,"r"))==NULL) 
+ {
+  printf("Não consegui abrir o arquivo de eventos,
+                            terminando aplicação.");
+  getchar();
+  exit(-1);
+ } /* if: fim da abertura do arquivo de eventos */
+
+ /* Abre o arquivo de saída e verifica sua integridade */
+ if((outnet=fopen(ARQUIVO_DE_SAIDA,"a"))==NULL)
+ {
+  puts("O arquivo de saída não foi aberto, 
+                  terminando aplicação...\n");
+  getchar();
+  exit(-1);
+ }
+
+ printf("Iniciando processamento da GDU");
+ /* Inicia processsamento */
+ for(a=1; a <= NEVENTOS; a++)
+ {
+  /* Lê evento atual */
+  leia_evento(fevento, evento, a);
+
+  /* Dispara cronômetro */
+  ev_tempo = clock();
+
+  /* Normaliza o evento */
+  for(k=0;k<=11;k++)
+  {
+   evento[k] /= normal[k];
+  }
+
+  /* Processamento Neuronal do evento */
+
+  /* Processamento da Hidden Layer
+      ou Neurônios da camada escondida */
+  for(i=0;i<=5;i++)
+  {
+   /*variáveis locais a este for (var i) */
+   float soma=0;
+
+   for(j=0;j<=11;j++)
+   {
+    /* Realiza a soma dos produtos internos da
+       saída da camada de entrada com os pesos */
+    soma+=(evento[j]*hidd[i].peso[j]);      
+
+   }/* for var j (2) */
+
+   /* Passa pela função de ativação */ 
+   hidd[i].saida=ativa(soma, tab, hidd[i].threshold);
+
+  }/* for var i (2) */
+
+  /* Processamento da Output Layer ou Neurônios da
+     camada de saída */
+  for(i=0;i<=3;i++)
+  {
+   /*variáveis locais a este for (var i) */
+   float soma=0;
+
+   for(j=0;j<=5;j++)
+   {
+    /* Realiza a soma dos produtos internos da saída da 
+       camada escondida com os pesos */
+    soma+=(hidd[j].saida*outlay[i].peso[j]);  
+
+   }/* for var j (3) */
+
+   /* Passa pela função de ativação 'ativa' */ 
+   outlay[i].saida=ativa(soma, tab, outlay[i].threshold);
+
+  }/* for var i (3) */
+
+ ev_tempo = clock() - ev_tempo;
+ tempo = tempo + (float)ev_tempo/CLOCKS_PER_SEC_HIGH;
+
+ /* Imprime no arquivo de saida outnet.txt. */
+ for(i=0;i<=3;i++)
+ {
+  fprintf(outnet,"%1.10f ",outlay[i].saida);
+ }/* for var i (4) */
+
+ fprintf(outnet,"\n");
+
+ }/*for var a*/
+
+ printf("\n\n\tTempo de processamento dos %d eventos: 
+               %e segundos.\n",NEVENTOS,tempo/NEVENTOS);
+ fclose(outnet); /* Fecha o arquivo de saída */
+ fclose(fevento); /* Fecha o arquivo de eventos */
+
+ /* O usuário deverá teclar enter para terminar a aplicação */
+ printf("\n\tTecle <enter> para terminar a aplicação...");
+ getchar();
+
+}/*main*/
+
+/*=================================================*/
+/* Funções chamadas pela rotina main               */
+/*=================================================*/
+float ativa(float valor, float *tb, float threshold)
+{
+ /* Soma threshold do neurônio */
+ valor+=threshold;
+
+ /* Testa se valor é negativo */
+ if( valor <= 0 ) /* 0 */
+ {
+  /* Caso seja, retorna o -1 para valor<-10 ou indexa a matriz tb
+  segundo uma álgebra para identificação da binagem do histograma */
+  if ( valor <= -10 ) /* 1 */
+  {
+   return -1.0;
+  }/* then 1 */
+  else
+  {
+   /* Acha a parte inteira da expressão à direita, em outras, trunca
+   na terceira casa decimal (estou multiplicando por 1000) "valor" */
+   int indice = 1000*valor+10000;
+   return(*(tb+indice));   
+  }/* else 1 */
+
+ }/* then 0 */
+ else
+ {
+  /* Caso não, retorna o 1 para valor>10 ou indexa a matriz tb
+  segundo uma álgebra para identificação da binagem do histograma */
+  if ( valor > 10 ) /* 2 */
+  {
+   return 1.0;
+  }/* then 2 */
+  else
+  {
+   /* Acha a parte inteira da expressão à direita, em outras, trunca
+   na terceira casa decimal (estou multiplicando por -1000) "valor" */
+   int indice = 1000*valor+10000;
+   return(*(tb+indice));
+  }/* else 2 */
+
+ }/* else 0 */
+
+}/* Função ativa */
+
+void leia_tabela(float *tb)
+{
+ /* Declaração de arquivos */
+ FILE *tabela;
+
+ /* Declaração de variáveis */
+ int count;
+ float lixo;/* Valores de x que serão lidos e jogados fora */
+
+ /* Rotina Principal */
+ tabela = fopen(TABELA_PARA_TANH,"r");
+ if(tabela == NULL)
+ {
+  printf("Não consegui abrir tabela de valores para tanh,
+           terminando aplicação.\n");
+  exit(-1);
+ }
+ for(count=0;count<=20000;count++)/* Faz um for de 0 a 10000 */
+ {
+  fscanf(tabela,"%f %f",&lixo,(tb+count));  
+ }/* for */
+ fclose(tabela);
+}/* leia_tabela */ 
+
+void leia_dumps(struct _hidd_ *hd, struct _outlay_ *ol)
+{
+ /* Arquivos utilizados */
+ FILE *fid;
+
+ /* Variáveis Locais */
+ int count, count2;
+
+ /* Rotina Principal */
+ fid = fopen(ARQUIVO_DE_PESOS,"r");
+ if(fid == NULL)
+ {
+  printf("Não consegui abrir o arquivo de pesos,
+                       terminando aplicação.\n");
+  exit(-1);
+ } /* if */
+
+ /* Lê os dumps da camada escondida */
+ for(count=0;count<=11;count++)
+ {
+  for(count2=0;count2<=5;count2++)
+  {
+   fscanf(fid,"%f",&hd[count2].peso[count]);
+  }/* for count2 */
+ }/* for count */
+
+ /* Lê threshold dos neurônios da camada escondida */
+ for(count=0;count<=5;count++)
+ {
+  fscanf(fid,"%f",&hd[count].threshold);
+ }/*for count (2o.) */
+
+ /* Lê os dumps da camada de saída */
+ for(count=0;count<=5;count++)
+ {
+  for(count2=0;count2<=3;count2++)
+  {
+   fscanf(fid,"%f",&ol[count2].peso[count]);
+  }/* for count2 (2o.) */
+ }/* for count (3o.) */
+
+ /* Lê threshold dos neurônios da camada de saída */
+ for(count=0;count<=3;count++)
+ {
+  fscanf(fid,"%f",&ol[count].threshold);
+ }/*for count (4o.) */
+}/* leia_pesos */
+
+void leia_evento(FILE *fev, float *ev, int linha)
+{
+ /* Declaração de variáveis */
+ int count;
+
+ for(count=1;count<=12;count++)
+ {
+  fscanf(fev,"%f ",(ev+count-1));
+ }/* for */
+
+ printf("\tEvento %d lido.\n",linha); /* A variável
+                     linha é o ponteiro de eventos */
+}/* leia_eventos */
+
+void leia_norma(float *norm)
+{
+ /* Declaração de arquivos */
+ FILE *fid;
+
+ /* Declaração de variáveis */
+ int count;
+
+ /* Rotina Principal */
+ if((fid=fopen(ARQUIVO_DE_NORMALIZACAO,"r"))==NULL)
+ {
+  printf("Não consegui abrir o arquivo de normalização,
+                                terminando aplicação.");
+  getchar();
+  exit(-1);
+ } /* if */
+
+ for(count=1;count<=12;count++)
+ {
+  fscanf(fid,"%f",(norm+count-1));
+ }/* for */
+ fclose(fid);
+}/* leia_norma */
+\end{verbatim} 
+

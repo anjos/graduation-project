@@ -1,0 +1,42 @@
+%% Babel stuff
+%begin{latexonly}
+\newcommand{\eng}[1]{\foreignlanguage{english}{\em{#1\/}}}
+\newcommand{\fr}[1]{\foreignlanguage{french}{\em{#1\/}}}
+%end{latexonly}
+
+\begin{htmlonly}
+\newcommand{\eng}[1]{{\em #1\/}}
+\newcommand{\fr}[1]{{\em #1\/}}
+\end{htmlonly}
+
+%% shortcuts
+\newcommand{\eiro}{$^{\underline{o}}$}
+\newcommand{\eira}{$^{\underline{a}}$}
+\newcommand{\expo}[2]{$#1^{#2}\/$}
+\newcommand{\raw}[1]{{\tt #1}}
+
+%% references
+\newcommand{\tabr}[1]{\ref{tab:#1}}
+\newcommand{\eqr}[1]{\ref{eq:#1}}
+\newcommand{\figr}[1]{\ref{fig:#1}}
+\newcommand{\secr}[1]{\ref{sec:#1}}
+\newcommand{\tabl}[1]{\label{tab:#1}}
+\newcommand{\eql}[1]{\label{eq:#1}}
+\newcommand{\figl}[1]{\label{fig:#1}}
+\newcommand{\secl}[1]{\label{sec:#1}}
+
+%% characters
+%begin{latexonly}
+\chardef\bsl=`\\
+%end{latexonly}
+
+\begin{htmlonly}
+\newcommand{\bsl}{/}
+\end{htmlonly}
+
+
+
+
+
+
+

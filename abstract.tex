@@ -1,0 +1,58 @@
+%% section names
+%begin{latexonly}
+\renewcommand\abstractname{\Large{Resumo}}
+%end{latexonly}
+
+\begin{abstract}
+
+\index{Resumo!do projeto}
+Na busca de novos canais físicos em experimentos com partículas colididas, sistemas de 
+validação têm se mostrado de grande valia. Normalmente os subprodutos de colisões 
+interparticulares representam física ordinária e conhecida enquanto que nova física 
+aparece camuflada neste meio. A impossibilidade de gravação e análise do imenso 
+volume de dados produzido nestes ambientes 
+exige o uso de sistemas de validação para que se maximize o espaço de gravação e se minimize
+o espaço de procura de novos fenômenos.
+
+Em particular, no CERN, o par acelerador/colisionador do LHC, que estará operacional 
+no ano de 2005, utilizará um destes sistemas de validação baseado em 3 níveis em cascata de 
+complexidade crescente e velocidade decrescente. Este sistema tem por objetivo a 
+análise e filtragem, em tempo real, de um volume de dados cuja taxa chega à 
+impressionante faixa de 100.000.000 por segundo. 
+
+A divisão do sistema em 3 etapas distintas visa produzir um sistema de validação o mais 
+eficiente e dinâmico possível, sem que se sobrecarregue nenhuma das partes. Para o 
+primeiro nível estima-se a utilização de processadores velozes, com nível baixo de 
+programação, capazes de suportar a taxa inicial dos eventos. Para o terceiro nível o uso 
+de pesado ambiente computacional é previsto.
+
+No segundo nível ambientes altamente programáveis serão combinados com técnicas de 
+paralelização de aplicações para que atinjamos a taxa de processamento requerida de 
+100.000 eventos por segundo.
+
+Vários tipos de tecnologia estão sendo testadas em todo o mundo para que se decida, 
+não somente sobre a arquitetura, mas, também, sobre o tipo de equipamento a ser 
+empregado neste extenso sistema de classificação.
+
+Este trabalho é sobre a implementação em uma máquina com processamento distribuído de uma
+das arquiteturas previstas para o segundo ní\-vel de valida\-ção (ou classifica\-ção) do 
+experimento ATLAS\-/\-LHC. A  
+má\-quina em questão é um sistema Telmat TN310 com processamento distribuído por 16 nós 
+padrão HTRAM totalmente conectados através de uma rede de chaves assíncronas. A 
+arquitetura mencionada prevê a utilização de técnicas de paralelismo de dados e fluxo na 
+obtenção de menores tempos de processamento.
+
+O objetivo final é entender se o processamento em sistemas 
+semelhantes a uma TN310 (visamos o tipo de nó-de-processamento e o padrão de conexão
+entre estes) pode ser viável para o segundo nível de validação. Isto se 
+dará através da análise e capacidade de abstração proporcionadas pelo 
+desenvolvimento da aplicação sugerida no equipamento.
+
+Soma-se ao trabalho o desenvolvimento de uma unidade de decisões globais baseado em redes 
+neurais. A unidade constitui processo central do sistema de validação. Resultados 
+atingidos são expostos e discussões sobre técnicas de implementação são realizadas 
+no decorrer da documentação. 
+
+
+\end{abstract}
+

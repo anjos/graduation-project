@@ -1,0 +1,18 @@
+%TexCad Options
+%\grade{\on}
+%\emlines{\on}
+%\beziermacro{\off}
+%\reduce{\on}
+%\snapping{\off}
+%\quality{2.00}
+%\graddiff{0.01}
+%\snapasp{1}
+%\zoom{1.00}
+\special{em:linewidth 0.4pt}
+\unitlength 1.00mm
+\linethickness{0.4pt}
+\begin{picture}(0.00,8.00)
+\put(0.00,8.00){\makebox(0,0)[lc]{Pre-processing and}}
+\put(0.00,4.00){\makebox(0,0)[lc]{RoI Collection}}
+\put(0.00,0.00){\makebox(0,0)[lc]{(fast pipeline)}}
+\end{picture}

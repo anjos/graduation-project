@@ -1,0 +1,1427 @@
+\chapter{Fundamentos Teóricos, Métodos e Materiais}
+\index{Fundamentos, Métodos e Materiais!Introdução}
+\label{chap:ftmm}
+
+Neste capítulo abordaremos alguns dos conceitos, materiais e métodos a serem 
+empregados no projeto. Isto inclui Redes Neurais Artificiais, algoritmos inspirados em 
+neurônios animais que exibem altíssima eficiência no reconhecimento de padrões em ambientes 
+ruidosos, a Telmat TN310, uma máquina com processamento distribuído contendo 16 nós 
+de processamento onde implementaremos o projeto, Técnicas de paralelismo, métodos 
+empregados para a paralelização de atividades seqüenciais e os dados utilizados para
+a simulação, de onde foram extraídos e sua validade.
+
+\section{Redes Neurais Artificiais}
+\index{Redes Neurais Artificiais}
+
+Redes Neurais Artificiais\index{Redes Neurais Artificiais!Definição} são biologicamente 
+inspiradas\cite{wass:neural}, isto é, são compostas de elementos que funcionam de 
+uma maneira análoga às funções mais elementares de um neurônio biológico. Estes 
+neurônios artificiais são agrupados de modo a formar uma rede complexa (ou não) que pode ou 
+não se parecer com estruturas cerebrais ou nervosas de um ser vivo. Estas redes são 
+as que dão o nome a este algoritmo.
+
+O surgimento de tais neurônios artificiais\index{Neurônios Artificiais!Surgimento} se deve a estudos na área de 
+neurobiologia e neuroanatomia. Estudiosos do campo conseguiram aos poucos desvendar 
+características do funcionamento de neurônios naturais, como a forma com que se comunicam
+e algumas configurações de operação. Estes estudos levaram ao desenvolvimento de 
+modelos matemáticos capazes de provar alguns dos fatos desvendados neste complexo 
+ambiente que possui centenas de bilhões de células interconectadas a outras centenas
+ de bilhões, formando uma complexa rede de processamento.
+
+Os modelos de neurônios artificiais\index{Neurônios Artificiais!Modelagem} são na verdade muito simples, constando somente 
+de multiplicações e somatórios aplicados a uma função de ativação. Em outros termos, 
+estes modelos não são mais do que extensões da lógica computacional hoje existente. 
+A construção de redes contendo diversos neurônios interconectados de diversas formas diferentes 
+levou os cientistas a comprovarem, em modelos artificiais, várias das capacidades de
+uma rede neuronal real, como o reconhecimento de padrões baseado em aprendizagem (ou 
+seja, estas redes artificiais são capazes de aprender a reconhecer um padrão), a 
+abstração a partir de um experiência anterior (por exemplo, reconhecer que uma 
+cadeira é uma cadeira, mesmo sem nunca tê-la visto antes) e por fim a capacidade de 
+generalização ou entender um padrão por trás de um ambiente muito ruidoso.   
+
+Com períodos de maior ou menor fervor, o estudo de redes neuronais, 
+técnicas de aprendizado para os neurônios e aplicações para estas estruturas 
+começaram a surgir e despontar em várias partes do mundo, indicando um novo conceito 
+em programação no reconhecimento de padrões. Nas próximas subseções veremos alguns 
+dos conceitos aqui introduzidos, como o modelo neuronal e técnicas de aprendizado.
+
+\subsection{O Neurônio Artificial}
+\index{Neurônios Artificiais!Descrição}
+
+Para que cheguemos a um modelo artificial, partiremos do entendimento de um neurônio 
+real de forma controlada, isto é, analisaremos alguns dos pontos interessantes 
+nestes dispositivos que nos levem a um modelo satisfatório para o neurônio 
+artificial. Pesquisadores nesta área estão sempre pensando sobre a organização do 
+cérebro quando consideram configurações de redes e algoritmos. Neste ponto a 
+correspondência entre mundo real e modelagem matemática deve acabar; a complexidade 
+cerebral é tão grande que poderemos nos atrapalhar ao invés de rumarmos a uma 
+modelagem cabível.
+
+As figuras~\ref{fig:neu0} e \ref{fig:neu1} mostram um desenho de partes de um 
+neurônio e do mecanismo de trasmissão de sinais através de neurônios usando uma 
+sinapse.
+
+\begin{figure} 
+ \begin{center}
+ \caption{O desenho mostra as diversas partes de um neurônio} 
+ \label{fig:neu0} 
+ \includegraphics[type = eps, ext = .eps, scale = 1, bb = 0 0 384 268]{figs/neuron0}
+ \end{center}
+\end{figure} 
+\begin{figure} 
+ \begin{center}
+ \caption{O desenho mostra a transmissão de sinais entre neurônios por intermédio de sinapses.} 
+ \label{fig:neu1} 
+ \includegraphics[type = eps, ext = .eps, scale = 1, bb = 0 0 384 268]{figs/neuron1}
+ \end{center}
+\end{figure}
+\index{Neurônios Biológicos!desenhos} 
+
+O funcionamento de tal estrutura é, segundo nosso modelo orientado, 
+simples\index{Neurônios Biológicos!funcionamento}: o 
+impulso elétrico é transmitido por intermédio de um líquido sináptico das sinapses 
+do neurônio transmissor ao dendrito do neurônio receptor, que 
+recebe, concomitantemente, de acordo com 
+o tipo de operação, sinais de outros neurônios, com menor ou maior 
+intensidade. Estes sinais são somados, ponderadamente, de acordo com o local e 
+intensidade de recebimento, e um novo sinal é gerado, 
+sendo, então, repassado ao próximo neurônio, que repetirá o processo até que este
+ se conclua de alguma forma. 
+
+O equivalente artificial deve aproveitar algumas características deste modelo e 
+outras, não. Para esta implementação prática modelou-se o neurônio artificial como 
+um processo matemático contendo diversas entradas que serão ponderadamente somadas e
+fomarão uma única saída. Os elementos de entrada e saída estarão no conjunto dos 
+números reais, ainda que isto não seja uma regra. A figura~\ref{fig:neu2} pode ser 
+elucidativa quanto a este modelo.
+
+\begin{figure} 
+ \begin{center}
+ \caption{Um neurônio artificial.} 
+ \label{fig:neu2} 
+ \input{picts/neuron2.pic}
+ \end{center}
+\end{figure}
+\index{Neurônios Artificiais!Diagrama esquemático} 
+
+Observamos que a célula possui vários dendritos por onde entra a informação a ser 
+tratada; estes dendritos possuem um peso atribuído que é, então, multiplicado a cada 
+entrada. As entradas ponderadas são somadas e aí tem-se a saída, usalmente chamada 
+de saída da rede ou NET.
+
+A saída da rede ou NET ainda é processada, em muitos casos, por uma função de 
+ativação F de forma a produzir a saída do neurônio, OUT. Esta função pode ser uma 
+simples função linear ou uma função não-linear que se aproxime mais às 
+características não-lineares de transferência de um conjunto de neurônios reais. 
+Existem fundamentos que comprovam que a utilização de funções não-lineares como 
+\eqr{atv1} ou \eqr{atv2} nos levam, além da aproximação ao modelo real, à 
+solução do dilema da saturação por ruído \cite{wass:neural}:``Como poderá a mesma rede de neurônios 
+lidar com sinais grandes e pequenos?''. Isto nos leva à questão de que redes 
+adaptadas a um sinal de entrada tipicamente baixo saturarão se a entrada for alta, e 
+redes adaptadas a um sinal alto não terão sensibilidade o suficiente para distinguir 
+sinais de baixo nível.
+
+\begin{equation}
+\label{eq:atv1}
+OUT = \frac{1}{1+e^{-NET}}
+\end{equation}
+\begin{equation}
+\label{eq:atv2}
+OUT = \tanh (NET)
+\end{equation}
+
+Funções não-lineares como \eqr{atv1} e \eqr{atv2} e funções de ativação em geral 
+podem ser pensadas como definindo um ganho não-linear para o neurônio artificial. 
+Este ganho é calculado achando-se a taxa de mundaça de OUT para uma pequena mudança em 
+NET. Então, o ganho é a inclinação da curva num ponto específico de excitação. Ele 
+varia de um valor baixo para NET-s mais elevados para valores mais altos com NET-s 
+próximos à origem. Isto resolve o dilema de Grossberg!\index{Dilema de Grossberg} A figura~\figr{neu3} mostra 
+um neurônio com função de ativação. Considerá-la-emos como a célula básica daqui por 
+diante.
+
+\begin{figure} 
+ \begin{center}
+ \caption{Um neurônio artificial com função de ativação.} 
+ \figl{neu3} 
+ \input{picts/neuron3.pic}
+ \end{center}
+\end{figure} 
+\index{Neurônios Artificiais!Com função de ativação não-linear}
+
+\subsection{Formando Redes Neurais}
+\index{Redes Neurais Artificiais!Construindo}
+
+Embora um neurônio sozinho seja capaz de executar algumas funções de reconhecimento de
+padrões, o 
+verdadeiro potencial desta técnica encontra-se em montar redes com neurônios 
+artificiais formando camadas de neurônios. Configurações mais simples possuem apenas
+uma camada de neurônios. Aquelas mais complexas podem conter inúmeras camadas e, 
+ainda, neurônios de camadas de maior nível com saída conectada a entradas de 
+neurônios em camadas de menor nível, ainda que este estudo não seja revisado aqui. 
+Neste documento nos limitaremos à revisão de redes na configuração \eng{Fully 
+Connected\-/\-Feed Forward}, que nomeia redes cujos neurônios têm suas saídas totalmente 
+conectadas aos dendritos da camada seguinte, e não há retorno de informação de camadas 
+superiores.
+
+\subsubsection{Redes com uma camada}
+\index{Perceptrons}
+
+A mais simples rede neuronal é formada por um grupo de neurônios arrumados numa única
+camada, 
+como mostra a figura~\ref{fig:rede1}. O conjunto de entradas X tem cada um dos seus 
+elementos conectados a cada neurônio artificial (NA) através de um peso (vetor W). Cada 
+neurônio somente computa a soma ponderada das entradas da rede e a passa pela função
+de ativação, obtendo a saída final. Alguns preferem se referenciar a neurônios nesta
+configuração como percéptrons.
+
+\begin{figure} 
+ \begin{center}
+ \caption{Uma rede neural com uma única camada.} 
+ \label{fig:rede1} 
+ \input{picts/single.pic}
+ \end{center}
+\end{figure} 
+
+A prova do teorema de aprendizado de percéptrons\index{Perceptrons!Teorema do 
+aprendizado} foi dada em 1962 e demonstrou que 
+um percéptron pode aprender qualquer coisa que pode representar. Ou seja, este 
+pode aprender a funcionar como qualquer função que possa representar, dando correta 
+saída para entradas conhecidas, desde que, claro, seja treinado para isto.
+
+Devido à limitações no número de funções que percéptrons podem representar (eles não 
+conseguem representar um simples ou-exclusivo), esta ferramenta tornou-se pouco 
+expressiva e a tecnolgia ficou adormecida por alguns anos, até que a criação de métodos de 
+treinamento eficientes propôs configurações bem-sucedidas de redes neuronais 
+utilizando mais de uma camada. Estas novas configurações resolveram muitos dos 
+problemas com a representação de funções linearmente separáveis, como é o caso do 
+ou-exclusivo ou o caso representado na seção~\secr{ANN_at_globaldec}. Neste último, 
+reparamos que, se não houver neurônios na camada escondida, a separação nunca atingirá
+seu máximo, já que a função em questão não é linearmente 
+separável\index{Perceptrons!Representação de funções linearmente separáveis}.
+
+\subsubsection{Redes com múltiplas camadas}
+\index{Redes Neurais Artificiais!Multicamadas}
+
+Redes com múltiplas camadas são formadas\index{Redes Neurais 
+Artificiais!Multicamadas!formação} colocando-se redes com camadas simples 
+em sucessão. Um exemplo de rede neural com múltiplas camadas pode ser 
+vista na figura~\figr{multi}. Nesta figura consideramos os neurônios com as 
+respectivas funções de ativação como um só bloco (oval) e tentamos nos generalizar ao
+máximo na confecção do desenho. O vetor de entrada X é entregue à primeira camada, 
+que, por sua vez, calcula os valores para este nível e passa sua saída para a camada 
+seguinte, até chegar ao vetor final de saída OUT.
+
+A identificação das linhas que separam diversos padrões como vimos na 
+seção~\secr{ANN_at_globaldec} é realizada pelos neurônios das camadas 
+intermediárias,
+também conhecidas como camadas escondidas\index{Redes Neurais Artificiais!camadas 
+escondidas}. Os neurônios da camada de saída servem 
+somente para que haja uma interpretação da saída produzida pelos neurônios da camada
+escondida em valores conhecidos e pré-determinados durante a fase de treinamento.
+
+\begin{figure} 
+ \begin{center}
+ \caption{Uma ANN com mais de uma camada.} 
+ \figl{multi} 
+ \input{picts/multi.pic}
+ \end{center}
+\end{figure}
+\index{Redes Neurais Artificiais!Multicamadas!esquema ilustrativo} 
+
+Existem muitos mé\-todos para o treinamento deste tipo de rede, supervisionados e
+não-\-supervisionados. Revisaremos aqui somente o método de retro\-propaga\-ção, visto que
+foi o que utilizamos em nosso projeto durante a fase de treinamento das redes.
+
+\subsection{Treinamento de redes de múl\-tiplas camadas - retro\-propaga\-ção}
+\index{Redes Neurais Artificiais!Treinamento com retropropagação} 
+
+Métodos eficientes de treinamento para redes neuronais de múltiplas camadas 
+despontaram ao longo dos últimos anos. O método de retropropagação foi o primeiro 
+deles, e teve seu nascimento vinculado ao nome de grandes pesquisadores que de forma 
+quase concomitante o elaboraram.
+
+O processo de cálculo das saídas de uma rede de múltiplas camadas é 
+simples:\index{Redes Neurais Artificiais!Multicamadas!Processo de cálculo da saída}  
+coloca-se a entrada (vetor X) nos neurônios da primeira camada, eles calculam e
+ geram uma saída para esta camada, que serve como entrada para a próxima, até que 
+esta operação atinja a última camada e produza uma saída final para a rede. 
+Chamar-se-á este passo de processamento de ``passo propagado'' denotando que os dados 
+fluem na rede da entrada para a saída. Isto é independente do treinamento da rede e 
+é implícito à sua natureza lógica e operacional.
+
+O problema chega agora: Como elaborar um método eficiente que possa, de forma 
+supervisionada, ajustar os pesos de uma rede de múltiplas camadas para que 
+consigamos representar uma função qualquer (dado que esta possa ser representável por
+uma rede neuronal)? Esta questão vem do fato de que é possível pensar em um método 
+eficiente para ajustar os pesos de uma rede de apenas uma camada. Por exemplo, é 
+possível para cada vetor de entrada achar uma saída através da rede, compará-la a um
+valor alvo e ajustar os pesos de forma a minimizar este erro. Já para redes de 
+múltiplas camadas fica difícil a utilização deste método visto que não possuímos os 
+valores alvos para os neurônios situados em camadas escondidas. A resposta é um tanto 
+simples: da mesma forma que podemos dar 
+um passo propagado na rede achando a saída é possível pensar em um algoritmo que dê um passo 
+retropropagado\index{Redes Neurais Artificiais!Treinamento!passo retropropagado}. 
+De acordo com a saída que rede obteve para um vetor de entrada 
+comparada com um valor-alvo para aquele vetor, re-calculamos os pesos de forma a 
+minimizar a diferença obtida na comparação da saída da rede com o valor alvo de 
+saída estipulado para aquele vetor de entrada. 
+
+Utilizam-se neste tipo de treinamento 2 vetores, chamados comumente de ``par de 
+treinamento''\index{Par de Treinamento}. O primeiro vetor é o vetor de entrada; o 
+segundo, a saída-alvo da rede ou saída que a rede, deve gerar para aquele vetor de 
+entrada. O processo de  treinamento pode ser assim entendido\index{Redes Neurais 
+Artificiais!Multicamadas!Passos de treinamento} :
+\begin{enumerate} 
+ \item Calcula-se o passo propagado para um dado vetor de entrada;
+ \item Calcula-se a diferença entre o valor de saída da rede e o valor-alvo;
+ \item Utiliza-se esta diferença no ajuste dos pesos da rede de forma a minimizar o 
+erro;
+ \item Retorna-se ao primeiro passo.
+\end{enumerate}
+Não há garantias de que a rede se ajustará, repetindo a função que representará, de 
+forma rápida, ou de que o número de passos de treinamento será pequeno. Apenas há 
+garantias de que o número de passos requeridos é finito e que, quando este número for
+atingido, a rede estará apta a representar tal função a que se propõe. Métodos e 
+adaptações para mais rápida convergência de redes neuronais existem, ainda que 
+constituam parte dos pontos não abordados aqui. Maiores referências podem ser vistas 
+em \cite{wass:neural}.
+
+O passo retropropagado pode ser dividido em 2 subpassos como se segue:
+\index{Redes Neurais Artificiais!Treinamento!equações}
+
+\paragraph{Ajustando os pesos da camada de saída.} Por possuirmos os valores-alvo de 
+saída para cada neurônio da camada final poderemos ajustar facilmente os pesos para 
+cada neurônio $p$ na camada escondida $j$ ligado ao neurônio $q$ da camada de saída 
+$k$ utilizando o seguinte cálculo:
+\begin{equation}            
+\eql{bprop_gamma}             
+\delta=\frac{d(OUT)}{d(NET)}(Alvo-OUT)
+\end{equation}              
+\begin{equation}            
+\eql{bprop_delta}             
+\Delta w_{pq,k}= \eta \delta_{q,k} OUT_{pj}            
+\end{equation}              
+\begin{equation}            
+\eql{bprop_weight}             
+w_{pq,k}(n+1)=w_{pq,k}(n)+\delta w_{pq,k}
+\end{equation}              
+Em \eqr{bprop_gamma} calculamos o que comumente é chamado de regra do delta, esta 
+expressão reflete quanto estamos longe do alvo, isto é, usamos a derivada da função 
+de ativação para chegarmos a um valor para $\delta$ que dependa linearmente da 
+diferença de $(Alvo-OUT)$. Na equação~\eqr{bprop_delta}, chegamos ao valor de mudança
+ do peso, multiplicando por $\delta$ um valor $\eta$ que expressa o coeficiente de 
+aprendizagem ou a variante da velocidade que impomos à rede em seu 
+treinamento\footnote{Deixa-se claro aqui que velocidade é diferente de qualidade no 
+treinamento, um maior $\eta$ pode vir a acarretar um treinamento mais demorado, 
+tanto quanto um menor, dependendo da funçao objetivo da rede.}. Assim chegamos ao 
+valor de mudança nos pesos da camada de saída, sendo concretizado 
+em~\eqr{bprop_weight}.
+
+\index{Redes Neurais Artificiais!Treinamento!Camadas escondidas}
+\paragraph{Ajustando os pesos das camadas escondidas.} As camadas escondidas não 
+possuem vetor-alvo; então, o processo de treinamento descrito anteriormente não pode 
+ser utilizado. Esta falta de algoritmo de treinamento cabível foi uma das grandes 
+responsáveis pela estagnação desta tecnologia nos anos 70. O Algorítmo de 
+retroPropagação treina as camadas escondidas propagando o erro da saída através das
+camadas internas, ajustando os pesos, camada a camada. 
+
+As equações~\eqr{bprop_delta} e \eqr{bprop_weight} são utilizadas para todas as 
+camadas, de saída e escondidas; entretanto, para camadas escondidas $\delta$ deve 
+ser gerado sem o benefício de um valor alvo. Inicialmente, $\delta$ é calculado para
+ cada neurônio na camada de saída, como na equação~\eqr{bprop_gamma}. Ele é 
+utilizado para ajustar os pesos que alimentam a camada de saída e depois 
+retropropagados através dos mesmos pesos, gerando um valor de $\delta$ para cada 
+neurônio da primeira camada escondida a contar da camada de saída. Estes valores de 
+$\delta$ são, então, utilizados para ajustar os pesos desta camada e depois 
+retropropagados para que ajustem os pesos das camadas anteriores, seguindo os 
+mesmos princípios.
+
+Considere um neurônio na camada escondida imediatamente anterior à camada de saída. 
+No passo propagado, este neurônio, através do peso que conecta esta camada à de 
+saída, cede o valor por si calculado à camada final. Durante o treinamento acontece 
+o inverso: o valor calculado para $\delta$ é retropropagado através dos pesos que 
+conectam este neurônio à camada de saída de tal forma que gerem um $\delta$ para 
+este neurônio. Este delta é então utilizado para calcular os pesos deste neurônio. O
+ valor para o $\delta$ da camada escondida pode, então, ser calculado como se segue:
+\begin{equation}                             
+\eql{bprop_hidden}                            
+\delta_{pj}=\frac{d(OUT_{pj})}{d(NET_{pj})}(\sum_{q} \delta_{q,k}w_{pq,k})       
+\end{equation}                               
+Deste ponto é possível utilizar as equações~\eqr{bprop_delta} e \eqr{bprop_weight} 
+para calcular e ajustar os pesos do neuronio escondido.
+
+\subsection{Redes Neurais e aspectos gerais}
+\index{Redes Neurais Artificiais!aspectos gerais} 
+
+É possível mencionar alguns dos pontos que se destacam na utilização de redes 
+neuronais em aplicações que exigem velocidade e segurança, são eles:
+
+\begin{description}
+\item[Robustez] Redes Neuronais são capazes de operar ainda que alguns de seus neurônios
+ parem de funcionar, gerando saídas coerentes e possuindo baixa degradação de 
+``performance'' em situações deste tipo. Este item parece ser bem interessante em 
+ambientes onde possuímos condições extremas de operação como altas temperaturas e 
+ambientes com alta taxa de radioatividade
+\item[Velocidade] Uma vez que utilizam operações simples como multiplicações e 
+somas, redes neuronais podem  ser muito rápidas. Uma redução da velocidade de 
+operação causada pela função de ativação pode ser sobreposta se utilizarmos tabelas 
+de conversão ao invés de calcularmos o valor de função (OUT) no ponto (NET) por 
+aproximação em séries\footnote{A maior parte dos algoritmos computacionais e 
+bibliotecas é baseado em expansão em séries para o cálculo de funções complexas como 
+$sin(x)$ ou $cos(x)$.}.
+\item[Saída probabilística] Esta característica
+é intrínseca à operação com redes neurais. Redes Neuronais, se não são treinadas à 
+exaustão (o que quase sempre é inviável), ou treinadas de tal forma à reconhecerem 
+todos os padrões possíveis para 
+uma dada entrada, são incapazes de afirmar com \underline{total} precisão sobre os 
+dados de entrada, sugerindo em sua saída um vetor de probabilidades ao invés de uma 
+afirmação tácita sobre a natureza de um evento (no caso da função de saída ser 
+contínua). A utilização de um vetor de dados probabilísticos na
+identificação de partículas pode ser mais vantajosa que uma resposta binária sobre 
+uma dada RoI ou um evento como indica~\cite{bock:ANN_at_level2}. Isto se deve 
+basicamente ao fato de que estaremos tentando reconhecer nova física, que não se 
+enquadra em nenhum padrão conhecido; logo, a identificação se fará baseada em dados 
+probalísticos, não justificando a necessidade de um algoritmo que rotule eventos 
+ainda não estudados.
+\item[Preço] Redes Neuronais podem ser competitivas quanto ao custo por sua 
+simplicidade lógica.
+\item[Aprendizado] Redes de Neurônios Artificiais podem aprender tanto quanto forem 
+treinadas. Isto é pontecialmente favorável em um ambiente onde desconhecemos as 
+facetas de operação e no qual pode ser necessária a atualização quanto a novos 
+padrões de entrada e saída.
+\item[Abstração] Uma das virtudes de redes deste gênero é capacidade
+de abstrair qualidades de fontes extremamente ruidosas, exibindo alto poder de 
+reconhecimento de entradas muito distorcidas pelos estágios anteriores.
+\end{description}
+  
+Assim sendo, Redes Neuronais Artificiais constituem base segura e sólida onde é 
+possível desenvolver aplicações para ambientes como este ao que propomos, por suas 
+características únicas e grande robustez.
+
+\section{Computação distribuída e o sistema TN310}
+\index{Computação distribuída e o sistema TN310}
+
+O sistema TN310 é um computador de processamento distribuído. Isto significa que sua
+Unidade de Processamento Central é dividida em várias partes, cada uma contendo um 
+processador reponsável por gerenciar seus próprios recursos, que podem executar 
+todas as mesmas ou diferentes funções ao mesmo tempo.
+
+No caso da TN310, o sistema é dividido de tal forma que cada processador possua (e 
+gerencie) um banco de memória particular e um coprocessador, que neste caso vem a 
+ser um ADSP21020 da Analog Devices. Exporemos características e vantagens do 
+processamento distribuído juntamente com uma explanação do equipamento no que segue.
+
+\subsection{Terminologia}
+\index{TN310!Terminologia}
+
+Durante as demais seções e capítulos os termos {\em processamento distribuído, 
+processamento  
+concorrente e processamento paralelo\/} significarão o mesmo, i.e., identificarão o 
+tipo de processamento em que atividades são realizadas de forma distribuída entre 
+diversos processadores, paralelizando o algoritmo para realizar uma dada tarefa.
+
+O termo \eng{speed-up}\index{speed-up} será utilizado para se referir ao fator de 
+redução no  
+tempo de processamento comparando-se o tempo gasto numa máquina com processamento 
+distribuído com o gasto numa máquina com processamento sequencial.
+
+\subsection{Processamento Distribuído - uma solução à demanda de velocidade}
+\index{O porquê do processamento distribuído}
+
+Utiliza-se processamento seqüencial atualmente, em vários dos laboratórios 
+espalhados em todo mundo por causa de vários fatores limitantes, entre eles:
+\begin{itemize} 
+ \item Preço;
+ \item Carência de material e pessoal treinado para operar e computar de forma distribuída;
+ \item Ausência de demanda.
+\end{itemize}
+
+O processamento seqüencial tem fundamentação no fato de que toda atividade 
+computacional pode ser realizada seqüencialmente, de forma lógica e ordenada. Alguns 
+problemas podem surgir deste tipo de implementação, entre eles a ausência de 
+equipamento rápido o suficiente para executar uma tarefa ou falta de tecnologia que 
+suporte tal volume de dados.
+
+A criação da computação distribuída veio fechar este buraco tecnológico provendo uma
+ solução inteligente para situações onde há demanda de maior velocidade e um maior fluxo de 
+dados sem que haja a necessidade de criarmos nova tecnologia. É possível dividir a 
+tarefa em partes que possam ser executadas quase que independentes, com maior ou menor 
+grau de dependência, de tal forma que possamos juntar 2 ou mais nós de processamento
+ e utilizá-los para um único objetivo (a realização da tarefa). Desta formak elimina-se a necessidade de 
+utilizarmos unidades de processamento super-rápidas (que, na maioria das vezes, são 
+caras ou inexistentes) e alivia o volume de dados suportados por uma única CPU.
+
+O processamento distribuído é uma forma alternativa de processamento e representa um
+mercado tecnológico em ascensão. Para que se processe distribuidamente não é 
+necessário a utilização de equipamento especial, basta que seja possível a 
+utilização de várias CPU-s concomitantemente. Como exemplo podemos ver que é possível 
+distribuir a execução de uma tarefa por uma rede como a Internet bastando que haja um 
+sistema operacional responsável por administrar o fluxo de dados e tarefas pela 
+rede.
+
+\index{Computação Distribuída!aplicações}
+Aplicações em computação distribuída não são especiais, havendo a 
+necessidade de entender uma dada tarefa e abstrair desta a máxima paralelização 
+atingível. Em outras palavras, deve-se dividir a aplicação de forma a maximizar o 
+poder de processamento disponível e minimizar a carga em cada processador (ou nó de 
+processamento\footnote{O termo nó de processamento é mais elucidativo quanto ao fato de
+que um processador pode administrar muitos recursos ao mesmo tempo, logo tornando-se
+um ponto de processamento independente. O termo processador muitas vezes esconde 
+este fato.}). Esta divisão pode ocorrer de várias formas, dependendo da aplicação, como
+ será elucidado mais à frente.
+
+Algumas aplicações são predominantemente seqüenciais, de forma que não podem ser 
+executadas paralelamente; como exemplo vemos a contagem de segundos em um intervalo de 
+tempo. Analogamente, há atividades que devem ser executadas paralelamente para que 
+haja máximo desempenho; como exemplo vemos a multiplicação de um vetor por uma 
+constante. Neste caso, os diversos valores do vetor podem ser multiplicados ao mesmo 
+tempo sem perda de informação. Assim, torna-se possível agilizar a execução desta e 
+outras tarefas apenas aumentando o número de nós operando concorrentemente(ao mesmo 
+tempo).
+ 
+\subsection{Arquiteturas Paralelas}
+
+Existem 4 tipos de arquiteturas computacionais segundo a classificação de 
+Flynn\index{Classificação de Flynn}, que
+ é baseada na multiplicidade das instruções e dos dados em um nó de processamento 
+\cite{telmat:transps}. 
+Os 4 tipos são:
+\begin{description} 
+ \item[S.I.S.D.]\index{Arquiteturas de sistemas computacionais!SISD} \eng{Single Instruction Single Data} ou Instrução Única Dados 
+Únicos;
+ \item[S.I.M.D.]\index{Arquiteturas de sistemas computacionais!SIMD} \eng{Single Instruction Multiple Data} ou Instrução Única Dados 
+Múltiplos;
+ \item[M.I.S.D.]\index{Arquiteturas de sistemas computacionais!MISD} \eng{Multiple Instruction Single Data} ou Instrução Múltipla Dados 
+Únicos;
+ \item[M.I.M.D.]\index{Arquiteturas de sistemas computacionais!MIMD} \eng{Multiple Instruction Multiple Data} ou Instrução Múltipla 
+Dados Múltiplos.
+\end{description}
+
+O primeiro item abrevia a classe de processamento conhecida comumente como 
+sequencial. Neste tipo de processamento, um único processador é responsável por 
+tratar os dados residentes em um banco de memória, de tal forma que cada dado está 
+direta e exclusivamente associado a uma única instrução. Um diagrama esquemático pode 
+ser visto na figura~\figr{sisd}.
+
+\begin{figure} 
+ \begin{center}
+ \caption{A arquitetura sequencial ou SISD} 
+ \figl{sisd} 
+ \input{picts/sisd.pic}
+ \end{center}
+\end{figure}
+\index{Arquiteturas de sistemas computacionais!SISD!esquema ilustrativo}
+
+\index{Arquiteturas de sistemas computacionais!SISD!definição}
+Na arquitetura de processamento SIMD, todos os processadores recebem a mesma 
+instrução para processamento, mas executam suas funções sobre dados diferentes. 
+Neste tipo de configuração, uma rede de interconexão entre o banco de memória e os 
+processadores é usada. Os diversos subbancos de memória podem ser acessados 
+concorrentemente e o acesso do mesmo endereço por mais de um processador é possível, 
+podendo causar um ``gargalo'' no processamento. Outro nome para arquiteturas deste tipo 
+é máquina vetorial.
+
+\index{Arquiteturas de sistemas computacionais!MISD!definição}
+Em arquiteturas do tipo MISD existe um processamento em cima de um mesmo dado 
+segundo várias instruções, resultando em um \eng{pipeline} de dados, isto é, um mesmo
+ dado passa por diversos tipos de processamento. Equipamentos com esta arquitetura 
+são em número reduzido.
+
+
+\index{Arquiteturas de sistemas computacionais!MIMD!definição}
+A classe de arquiteturas MIMD representa aquelas máquinas que podem operar sobre 
+dados distintos, concorrentemente, com diferentes instruções ou ainda sobre o mesmo 
+dado com diferentes instruções formando um \eng{pipe}. Este tipo de arquitetura é 
+flexível e pode vir configurada de 2 maneiras:
+\begin{enumerate} 
+ \item{\bf Memória Global (figura~\figr{mimd_global})} todas as unidades de processamento
+acessam uma ú\-ni\-ca me\-mó\-ria compartilhada. O acesso a bancos diferentes pode ser 
+concorrente, ainda que o acesso ao mesmo banco possa causar um aumento no tempo de 
+processamento final. A comunicação neste tipo de configuração é rápida, visto que a 
+memória é local a todos os processadores.  
+ \item{\bf Memória Distribuída (figura~\figr{mimd_distr})} os processadores têm cada um 
+seu banco de memória privado. Isto pode facilitar a inclusão de um sem-número de 
+processadores em uma única máquina sem perda de ``performance'', ao contrário da 
+configuração com memória global. Uma desvantagem pode ser observada quanto ao acesso
+de dados em memória não-local, podendo gerar um aumento considerável no tempo de 
+execução de uma tarefa.
+\end{enumerate}
+ 
+\begin{figure} 
+ \begin{center}
+ \caption{Esquema representativo de uma arquitetura MIMD com memória global.} 
+ \figl{mimd_global} 
+ \input{picts/mimdg.pic}
+ \end{center}
+\end{figure} 
+
+\begin{figure} 
+ \begin{center}
+ \caption{Esquema representativo de uma arquitetura MIMD com memória distribuída.} 
+ \figl{mimd_distr} 
+ \input{picts/mimdd.pic}
+ \end{center}
+\end{figure} 
+
+\subsubsection{Redes de Conexões}
+\index{Redes de Conexões}
+
+Computadores com arquiteturas paralelas são caracterizados pela utilização de redes 
+de comunicação de alta ``performance''. Redes de comunicação são requeridas em 
+aplicações distribuídas pois processos alocados em diferentes nós podem, em muitos 
+dos casos, ter que se comunicar. A comunicação entre os nós distintos de uma mesma 
+arquitetura pode ser feita de várias maneiras, revisaremos algumas aqui.
+
+A organização do sistema de \eng{hardware} em ambientes distribuídos também 
+pode caracterizar uma arquitetura. Em outras palavras, o esquema de conexões entre 
+os processadores e a memória é fator marcante em arquiteturas paraleas sendo utilizado para 
+sua classificação e respeitado durante a fase de alocação das tarefas nos nós de 
+processamento.
+
+Em sistemas com memória global,\index{Sistemas com memória global!rede de conexões} a 
+rede de conexões é caracterizada por uma malha de  
+chaves que conectam os processadores aos bancos, de forma que se processadores 
+quiserem passar informações entre si, devem escrever e ler de um endereço comum. Já 
+em sistemas com memória distribuída, a passagem de dados deve ser feita por passagem 
+de pacotes através de canais de comunicação entre os processadores; isto implica 
+numa rede de conexões voltada ao roteamento de pacotes, ao invés de otimizada para o 
+acesso de bancos de memória. As figuras~\figr{glob_mem} e \figr{shar_mem} 
+exemplificam a passagem de informação nestes 2 tipos de sistema.
+
+\begin{figure} 
+ \begin{center}
+ \caption{A passagem de dados em um sistema com memória global.} 
+ \figl{glob_mem} 
+ \input{picts/globm.pic}
+ \end{center}
+\end{figure} 
+
+\begin{figure} 
+ \begin{center}
+ \caption{A passagem de dados(por chaves) em um sistema com memória distribuída.} 
+ \figl{shar_mem} 
+ \input{picts/sharm.pic}
+ \end{center}
+\end{figure} 
+
+Em especial, redes que utilizam roteamento de pacotes (memória distribuída) 
+normalmente o fazem utilizando chaves muito rápidas ou conexões especiais entre 
+processadores. Se utilizarem chaves, a configuração de chaves (figura~\figr{shar_mem}) 
+pode ser complexa ou  
+simples dependendo diretamente do número de processadores do sistema (e do número de 
+saídas e entradas disponíveis para comunicação de cada um) e velocidade de
+operação requerida para o sistema como um todo. Se não utilizarem passagem de pacotes 
+por chaves, estas redes deverão ser arquitetadas de forma específica para uma dada 
+aplicação. Isto quer  dizer que aplicações que possuem uma limitação na forma de 
+comunicação entre os  processos devem ser alocadas em arquiteturas cabíveis. A 
+ título de exemplo, podemos considerar aplicações do tipo \eng{master-slave}, que 
+compõem-se de uma 
+aplicação-mestre que  supervisiona o trabalho e cede dados aos \eng{slaves}. Estas 
+aplicações podem ser diagramadas como na figura~\figr{master_slave}. Seria inviável,
+ por exemplo, a implementação de uma aplicação deste tipo numa rede como na 
+figura~\figr{configs_no_switch}(a). Esta última também traz alguns outros 
+esquemas de conexões entre nós de processamento formando arquiteturas distribuídas. 
+Em ~\figr{configs_no_switch}(b) vemos uma conexão tipo anel; em (c), uma topologia 
+totalmente conectada. No esquema (e) é possível observar uma topologia de conexões 
+conhecida como hipercubo e em (d) uma conexão tipo árvore.
+
+\begin{figure} 
+ \begin{center}
+ \caption{Um diagrama de uma aplicação \eng{master-slave}} 
+ \figl{master_slave} 
+ \input{picts/massla.pic}
+ \end{center}
+\end{figure} 
+
+\begin{figure} 
+ \begin{center}
+ \caption[Algumas configurações topológicas de redes com memória distribuída que não utilizam 
+chaves.]{Algumas configurações topológicas de redes com memória distribuída que não utilizam 
+chaves. Repare que, para passar dados para processadores mais remotos, estes dados 
+devem passar por outros processadores que apenas os repassarão adiante.} 
+ \figl{configs_no_switch} 
+ \input{picts/noswitch.pic}
+ \end{center}
+\end{figure}
+\index{Sistemas com memória distribuída!rede de conexões}
+
+\paragraph{Sincronismo.}\index{sincronismo} De uma forma geral, a comunicação entre 
+redes que utilizam pacotes para a passagem de 
+dados entre nós distintos de processamento pode ser feita síncrona ou 
+assincronamente. Quando a passagem é feita sincronamente, o processador que passa o 
+dado espera até que o processador recebedor reconheça que recebeu o pacote para 
+prosseguir em sua tarefa, ficando até então parado, esperando tal confirmação. Se a passagem é feita
+de forma assíncrona, o processador que envia o dado segue em sua operação normal, 
+sem esperar um sinal de confirmação de outros nós de processamento.
+
+\paragraph{Dinamismo.}\index{dinamismo em arquiteturas} As arquiteturas paralelas 
+podem ainda ter 3 classes distintas: 
+\begin{itemize} 
+ \item estáticas - redes cuja interconexão entre os processadores é imutável;
+ \item pseudodinâmicas - redes cuja topologia é alterada logo antes da execução de 
+uma tarefa;
+ \item dinâmicas - redes que podem ter sua topologia reestruturada durante a 
+execução de uma tarefa ou aplicação.
+\end{itemize}
+
+\subsection{O Sistema TN310}
+\index{TN310}
+
+A TN310 é um computador paralelo tipo MIMD com memória distribuída. O sistema em 
+questão abriga 16 nós baseados no padrão HTRAM (\eng{High performance TRAnsputer 
+Modules}), 
+que se comunicam entre  si utilizando-se de chaves rápidas (tipo STC104). 
+
+Cada nó de processamento HTRAM (tamanho 4) desse sistema abriga um 
+\eng{transputer} (INMOS T9000), um banco de memória RAM privada de 8 Megabytes, um 
+ADSP-21020 da Analog Devices e um \eng{buffer} de comunicação entre o transputer e o ADSP 
+de 256 Kilobytes. O ADSP ainda possui uma memória de acesso privado de 196 Kilobytes.
+
+A entrada e saída de dados na máquina é feita através de um sistema hospedeiro, no nosso 
+caso um Personal Computer rodando MS-DOS.
+
+\subsubsection{O Transputer T9000}
+\index{T9000!características}
+\secl{t9000_descrip}
+
+O \eng{Transputer} T9000 é um microprocessador CMOS de 32-bits desenhado para ser 
+utilizado em aplicações que requeiram alta ``performance'' combinada a alta integração e 
+simplicidade de uso. Algumas de suas características incluem um \eng{clock} de 20 
+MegaHertz, 16 Kilobytes de 
+\eng{On-Chip RAM}\index{T9000!On-Chip RAM} que pode ser utilizada em 3 diferentes 
+configurações: toda em 
+\eng{cache}, metade \eng{cache}/metade memória de acesso rápido ou totalmente 
+configurada como  
+memória de acesso rápido. Possui, ainda, uma unidade aritmética para números em 
+ponto-flutuante (reais) de 64 bits e uma interface de memória altamente programável. 
+
+\index{Transputers}
+\eng{Transputers} são processadores versáteis que possuem lógica de baixo nível 
+otimizada para a comunicação interprocessadores. Os \eng{transputers} da linha T9000 
+possuem 4 canais independentes de comunicação chamados de \eng{DS-Links}, que podem operar 
+concorrentemente recebendo ou passando dados de/para 4 diferentes localidades.
+Cada \eng{DS-Link} suporta um fluxo máximo de dados de 80 Megabytes por segundo.
+
+A comunicação entre \eng{transputers} se dá através de canais implementados em baixo
+nível (\eng{hardware}). As instruções de máquina indistinguem a comunicação feita 
+dentro de um mesmo transputer, por diferentes processos, ou feitas entre diferentes nós 
+de processamento. No T9000 a comunicaçao se dá através de canais especiais chamados 
+de {\bf canais virtuais}\index{canais virtuais}, que são instâncias de canais reais multiplexados por um 
+{\em Processador de Canais Virtuais (VCP)\/} nos 4 \eng{DS-Links}. O 
+VCP\index{Processador de canais virtuais} é 
+implementado em baixo nível e permite que o programador se despreocupe com relação à 
+administração de canais e protocolos de comunicação entre os diversos \eng{transputers}.
+ 
+O T9000 ainda exibe capacidade de multiprocessamento através de \eng{time-sharing}. 
+Sua arquitetura suporta a  criação e agendamento de {\bf qualquer} número de 
+processos concorrentes, eliminando quase que totalmente a utilização de um sistema 
+operacional. A figura~\figr{T9000} mostra um diagrama de blocos do \eng{Transputer} 
+INMOS T9000 retirada de \cite{telmat:manual}.
+
+\begin{figure}
+ \caption{A arquitetura básica do \eng{Transputer} T9000.}
+ \figl{T9000}
+ \begin{center}
+ \includegraphics[type=eps, ext=.eps, bb= 0 0 228 441]{figs/T9000}
+ \end{center}
+\end{figure}
+\index{T9000!Diagrama esquemático}
+
+\subsubsection{O DSP \eng{on-board}}
+\index{HTRAM!DSP on-board}
+
+As HTRAM-s desse sistema também abrigam um DSP (\eng{Digital Signal Processor}) 
+operando como um coprocessador matemático. A arquitetura básica destes 
+coprocessadores incluem três unidades computacionais independentes: uma Unidade de 
+Lógica Aritmética, um multiplicador/acumulador de ponto fixo e um \eng{shifter}. 
+Esta arquitetura permite rápido processamento, visto que a unidade pode multiplicar 
+em ponto flutuante, armazenar e procurar em um único ciclo que dura 40 ns. 
+
+O DSP residente nas HTRAM-s se comunica única e exclusivamente através do transputer
+ na placa, utilizando para tal o \eng{buffer} comum de 256 Kilobytes. A utilização do DSP para 
+processamento matemático pode otimizar o tempo total de processamento gasto em cada 
+nó, por sua versatilidade.
+
+\subsubsection{Conectando HTRAM-s - A chave STC104}
+\index{TN310!Conexão entre as HTRAM-s}
+\index{STC104}
+\secl{connect}
+
+Os 16 nós de processamento HTRAM do sistema TN310 são conectados através 
+de chaves STC104. As chaves são capazes de conectar 64 canais de comunicações seriais entre 
+si, formando até 32 \eng{links} de comunicação entre os diversos processadores. Os 
+\eng{links} operam concorrentemente a transferência de 32 pacotes de dados sem que 
+haja interferência entre eles. O tempo máximo de chaveamento para um pacote através 
+destas chaves é de 1 $\mu$s, significando que esta demorará no máximo 1 $\mu$s para 
+direcionar um pacote que chega a um de seus canais. A banda passante das chaves é de
+ 100 Megabytes por segundo, fazendo com que estas não representem um peso à 
+comunicação entre 2 nós distintos.
+
+A figura~\figr{connect} mostra a conexão entre os diversos nós de processamento do 
+sistema TN310. Esta configuração pode ser alterada durante a inicialização do 
+sistema (ele é pseudodinâmico), sendo possível o ocultamento de canais e 
+de pontos de processamento. Todos os processadores podem se comunicar entre si 
+através de um número de chaves. Por exemplo, o nó 0 pode se comunicar através da 
+chave 0 e da chave 1 ao nó 7 no mesmo cartão. 
+
+\begin{figure} 
+ \begin{center}
+ \caption{TN310, conexão dos diversos nós HTRAM (dados recolhidos pela ferramenta 
+T9SPY).} 
+ \figl{connect} 
+ \input{picts/connect.pic}
+ \end{center}
+\end{figure}
+\index{TN310!Diagrama de conexões de baixo nível} 
+
+A comunicação será tão lenta quanto maior for o número de chaves por que o pacote tenha 
+que passar. Assim o tipo de comunicação mais custosa seria entre os nós 0 e 8 pois 
+os pacotes de dados passariam por 4 chaves (0-1-6-5). O programador deve atentar para
+este fato se quiser a otimização máxima do processamento no sistema.
+
+A comunicação com o sistema \eng{host} é feita através da chave 0, que está conectada aos 4
+nós da HTRAM 0, indicando que esta é a mais próxima do sistema hospedeiro.
+
+Os outros \eng{links} das STC104-s são utilizados para o fluxo de dados de controle 
+de inicialização e operação.
+
+\subsubsection{O Sistema Hospedeiro}
+\index{TN310!Sistema hospedeiro}
+
+Um Personal Computer (PC) rodando MS-DOS/Windows 3.1 é o sistema hospedeiro para a 
+TN310, sendo utilizado também como ambiente de desenvolvimento de aplicativos para 
+este sistema. A passagem de dados é feita por uma placa especial que conecta o 
+PC às diversas entradas e saídas da TN310.
+
+Apresentaremos agora o ambiente de desenvolvimento para a TN310 e as ferramentas 
+disponíveis. Quando forem mencionados nomes de arquivos ou diretórios, durante 
+posteriores argumentações na continuação deste documento, subentende-se que o leitor
+compreenda que estaremos nos referindo à árvore de diretórios do PC hospedeiro acoplado à
+ TN310 no Laboratório de Processamento de Sinais (LPS, Centro de Tecnologia/UFRJ, 
+sala H-220).
+
+\subsection{Desenvolvendo aplicações para a TN310}
+\index{TN310!Desenvolvimento de aplicações}
+\secl{develop_app}
+
+O desenvolvimento de aplicações para o sistema TN310 se dá através do ``InMOS C 
+ToolSet''\index{ToolSet}. Este conjunto de ferramentas abrange configuradores de 
+\eng{hardware} em baixo 
+nível utilizando \eng{Network Description Language (NDL)} e um conjunto de 
+bibliotecas que tornam possível a programação em ANSI C concorrente.
+
+Outras ferramentas do \eng{Toolset} incluem uma interface e ferramentas para 
+operação sobre um ``micro-kernel'' chamado de RuBIS (\eng{Runtime Basic Interface 
+System}) 
+que atua como um pequeno sistema operacinal rodando no sistema. Este 
+``micro-kernel'' é 
+programado em ANSI C, fazendo com que aplicações que rodem sobre esta camada 
+tornem-se mais lentas. 
+O ``\eng{toolset}'' do sistema TN310 ainda inclui também ferramentas para programação 
+em PVM, uma linguagem mais flexível e portátil, 
+ainda que aplicações que rodem sobre esta camada sejam ainda mais lentas pois constitue 
+uma camada construída acima da interface RuBIS. O diagrama da figura~\figr{layers} 
+pode ser elucidativo quanto ao exposto.
+
+\begin{figure} 
+ \begin{center}
+ \caption{As diversas camadas de programação disponíveis no \eng{T9000 Toolset}.} 
+ \figl{layers} 
+ \input{picts/layer.pic}
+ \end{center}
+\end{figure}
+\index{ToolSet!Camadas de programação} 
+
+Uma vez que estamos diante de uma aplicação que necessita de \underline{máxima 
+otimização e velocidade}, ainda 
+que mantendo uma simples interface que possa facilmente ser controlada e mantida, optamos 
+pelo desenvolvimento de nossas aplicações na primeira camada do ToolSet, utilizando 
+C concorrente e as bibliotecas deste conjunto.
+
+Para que se programe o sistema TN310 são necessárias 2 fases distintas de 
+programação\index{ToolSet!Fases de programação}. Na primeira fase, um enfoque de baixo 
+nível da aplicação deve ser  utilizado; nesta fase, o programador configurará a 
+máquina (usando \eng{Network Description Language}). Na segunda fase um enfoque de  
+alto nível, onde o programador possa adaptar a configuração de sua aplicação ao 
+\eng{hardware} disponível e pré-configurado, deve ser aplicado.
+
+Estas duas fases de programação são totalmente exclusivas e não interferem uma na 
+outra. A primeira fase (deve-se executar a programação da aplicação seguindo esta 
+ordem) consiste em determinar as características do \eng{hardware} disponível, isto é, 
+canais de \eng{hardware}, número de nós de processamento disponíveis, memória disponível 
+em cada nó, sinais de controle etc. Na segunda fase, utiliza-se o sistema 
+configurado na primeira fase para rodar a aplicação em C Concorrente. Veremos um 
+pouco de cada uma destas fases no que segue.
+
+\subsubsection{Fase 1 - A configuração em baixo nível usando NDL}
+\index{Network Description Language - NDL}
+
+Esta fase é composta de 2 subfases. Na primeira, existe uma descrição do 
+\eng{hardware} disponível utilizando NDL. Esta fase inclui a configuração de 
+quaisquer parâmetros dos componentes da rede de processadores e chaves. No que se 
+refere aos 
+processadores, este passo inclui a descrição da interface de tempo da memória, a 
+configuração da memória \eng{cache}, as instruções de inicialização e ponteiros para áreas
+de memória. Para as chaves, a descrição abrange rotulação e detalhes de roteamento. 
+Para ambos os dispositivos (processadores e chaves), o arquivo de configuração de 
+\eng{hardware} deve conter a descrição completa da conexão entre estes elementos e o 
+sistema hospedeiro, incluindo conexões de dados e controle.
+
+A linguagem de descrição de redes (\eng{Network Description Language}) torna possível 
+a utilização de \eng{software} (alto nível de programação) para que se determine o 
+comportamento de um sistema de baixo nível (\eng{hardware}). A descrição é feita 
+utilizando-se de comandos especiais (padrão NDL) que podem ser armazenados em arquivo texto. É 
+possível editar tal arquivo em qualquer tipo de editor padrão ASCII (7-bit). 
+Normalmente estes arquivos são gerados por desenhistas de placas e sistemas e, na 
+maioria das vezes, permanecem inalterados durante toda a vida útil de um sistema. Isto 
+se deve ao fato de que as descrições de redes geralmente tentam aproveitar todos os 
+recursos disponíveis, de tal forma que qualquer outra descrição somente seja um 
+subconjunto da descrição primária.     
+
+No caso da TN310 a instalação da máquina (arquivos de sistemas no PC hospedeiro) 
+inclui, além da descrição padrão que inclui todo o sistema, uma descrição para operação com 
+apenas 2 processadores. Estes arquivos encontram-se na árvore de 
+diretórios do drive C sob o nome de {\tt hardfiles\bsl tn310.ndl}\footnote{A 
+figura~\figr{connect} traz o esquema de conexões gerado pela inicialização do 
+sistema com esta descrição.} e {\tt 
+hardfiles\bsl tn310-2p.ndl}, respectivamente. 
+
+Como exemplificação de um arquivo NDL para a TN310, o apêndice~\ref{ap:ndl} possui o 
+arquivo tn310-2p.ndl transcrito e com alguns comentários.
+
+As diretivas da rede são carregadas durante a inicialização do sistema, no 
+\eng{bootstrap}\index{bootstrap} da máquina. Para que seja possível a utilização do 
+arquivo NDL de  
+descrição do ambiente um arquivo de configuração associando a 
+aplicação construída em C Concorrente\index{C Concorrente} e o arquivo NDL deve ser 
+criado, como se segue.
+
+\subsubsection{Unindo partes, o arquivo de configura\-ção da aplica\-ção}
+\secl{cfs}
+
+A utilização de um arquivo de configuração para que seja possível a criação de um 
+arquivo de inicialização global traz inúmeras vantagens, entre elas o benefício de 
+jamais termos que lidar com o arquivo NDL diretamente, somente o referenciando e, 
+assim, eliminando questões de controle de fluxo de dados e alocação de endereços.
+
+O arquivo de configuração da aplicação é um arquivo-texto comum (extensão {\em 
+cfs\/}), especificamente produzido para uma única aplicação e compilado junto com esta. 
+Neste arquivo, há uma linha que descreve a  
+configuração da rede a ser utilizada (arquivo NDL) e outras linhas que descrevem a 
+maneira como as subaplicações (ou tarefas de uma aplicação) se comunicarão pela 
+rede, a memória disponível para cada tarefa e onde será alocada cada uma destas.
+
+Durante a inicialização os dados do arquivo NDL são codificados e um ``\eng{reset}''
+é dado na rede, de tal forma que haja uma arrumação desta para a execução da aplicação. 
+Daí, o arquivo CFS é codificado e os endereços onde serão alocadas as tarefas são 
+repassados ao código da aplicação, o que faz com que as aplicações se posicionem 
+corretamente no sistema. Por fim, são repassados às aplicações os endereços relativos 
+aos canais de comunicação entre as diversas tarefas, previamente alocados pelo 
+arquivo de configuração da aplicação. A partir deste momento a aplicação é disparada
+e pode rodar sem problemas.
+
+\index{Arquivo de configuração}
+De forma simplificada, o arquivo de configuração da aplicação é responsável por 
+traçar um esquema topológico de alocação das tarefas e canais de uma aplicação, 
+juntamente com alguns de seus parâmetros. O apêndice~\ref{ap:cfs} pode ser 
+elucidativo quanto a tal arquivo, pois mostra um exemplo comentado.
+ 
+\subsubsection{Tarefas, aplicações e o T9000 ToolSet}
+
+\index{C ToolSet}
+As diversas tarefas de uma aplicação são programáveis usando o \textit{C ToolSet} que 
+acompanha o sistema TN310. Este conjunto de ferramentas é constituído de bibliotecas
+especiais que tornam a linguagem C padrão ANSI capaz de executar funções implícitas 
+a sistemas concorrentes. Estas funções incluem alocação de canais, comunicação 
+entre tarefas e criação de processos\footnote{Processos são subtarefas que podem 
+ser disparadas por uma tarefa e operar concorrentemente ou não com ela. 
+Processos são subinstâncias de uma tarefa. Não abordaremos este tópico aqui.} 
+concorrentes numa mesma tarefa. 
+
+\index{C ToolSet!ferramentas}
+O C ToolSet também abriga ferramentas que são utilizadas para rodar e depurar uma 
+aplicação construída em qualquer uma de suas 
+camadas (veja figura~\figr{layers}) \cite{telmat:soft_usrman}. As 
+aplicações podem rodar em ambiente Windows. O 
+aplicativo \raw{IRUN} é utilizado para rodar a aplicação no sistema; ele carrega um 
+arquivo ``bootável'' na TN310, que é gerado a partir do código em C, o arquivo CFS e 
+o arquivo NDL durante o processo de compilação. 
+
+Os aplicativos \raw{IPROF}, \raw{IMON} e \raw{INQUEST} são respectivamente um 
+\eng{profiler}, um monitor de carga sobre os nós de processamento e um depurador 
+interativo. Opções especiais de compilação \cite{telmat:ts_refman} devem ser aplicadas 
+ao código durante esta fase para que haja correta utilização destes aplicativos. 
+
+O ToolSet ainda traz um analisador de redes, o \raw{T9SPY}, que traduz as informações 
+de arranjo de uma TN310 inicializada por um arquivo NDL em informações 
+compreensíveis (arquivo texto) que podem ser utilizadas para traçar diagramas como o da
+figura~\figr{connect}.
+
+\index{C ToolSet!compiladores}
+A compilação do código em C é feita utilizando-se de compiladores e \eng{linker} 
+especiais (\raw{icc} e \raw{ilink}) que fazem parte do ToolSet. A união dos arquivos 
+para formar uma aplicação é feita por aplicativos dedicados, o \raw{inconf} e o 
+\raw{icollect}. Cada um destes aplicativos tem \eng{flags} que devem ser adicionados
+ou retirados de acordo com o objetivo da compilação. Por exemplo, a utilização dos 
+flags \raw{T9000} e \raw{GAMMAE} no compilador e no \eng{linker} é necessária 
+sempre,
+pois indica o tipo e versão de \eng{transputer} do sistema. Flags como \raw{G} e \raw{GA}
+para o compilador e \eng{linker}, respectivamente, somente são necessários quando a 
+compilação for direcionada à depuração  e não devem ser utilizados normalmente, pois 
+aumentam o tempo de execução de tarefas e processos.
+
+\index{makefile}
+Normalmente, utiliza-se um \raw{makefile} para a compilação através do aplicativo 
+\raw{make.exe}. Este aplicativo direciona os blocos de compilação e \eng{flags} com 
+regras e diretivas de tal forma que o usuário somente precise executá-lo para que 
+consiga o arquivo ``bootável'' da aplicação. Cada aplicação (incluindo diferentes 
+direcionamentos de uma mesma aplicação como a compilação para depuração) deve 
+possuir seu próprio \raw{makefile}. Um \raw{makefile} exemplificado encontra-se no 
+apêndice~\ref{ap:makefile}.
+
+\subsubsection{O InMOS C}
+\index{InMOS C}
+
+A linguagem de programação que permite máxima velocidade em aplicações para o 
+sistema TN310 é o InMOS C. Esta linguagem é uma versão do ANSI C adaptado a sistemas
+concorrentes. Diversas bibliotecas são utilizadas, complementando o conjunto de 
+bibliotecas-padrão, de forma que haja máxima portabilidade e flexibilidade das 
+aplicações na adaptação a novos sistemas.
+
+Muitas funções e tipos novos são acrescentados; discutiremos aqui alguns destes, 
+assim como algumas das limitações que impõem. A tabela~\tabr{ansi_c_tab} mostra todas as 
+bibliotecas disponíveis no ToolSet. Para uma listagem completa de tais 
+bibliotecas, incluindo a descrição detalhada de novos tipos e funções o leitor deve 
+consultar \cite{telmat:ansi_c_refman}.
+
+\begin{table}
+ \caption{As bibliotecas não-ANSI no InMOS C ToolSet (Retirado de 
+\cite{telmat:ansi_c_refman}).}
+ \tabl{ansi_c_tab}
+ \begin{center}
+ \begin{tabular}{|r||l|} \hline
+ Header file & Description \\ \hline\hline
+ boolink.h & Boot link Channel information \\ \hline
+ channel.h & Channel Handling \\ \hline
+ dos.h & DOS specific operations \\ \hline
+ fnload.h & Dynamic Code Load functions \\ \hline
+ host.h & Host System information \\ \hline
+ hostlink.h & Host Channel information \\ \hline
+ iocntrl.h & Low level fiel handling \\ \hline
+ mathf.h & \raw{float} versions of maths and trigs functions \\ \hline
+ misc.h & Miscellaneous functions \\ \hline
+ process.h & Process startup, hadling and control \\ \hline
+ semaphor.h & Semaphore hadling \\ \hline
+ stdiored.h & Reduced library string formattion functions \\ \hline
+ \end{tabular}
+ \end{center}
+\end{table}
+\index{InMOS C!bibliotecas} 
+
+\paragraph{Canais.}\index{canais} Canais são a forma de comunicação entre as diversas tarefas de 
+uma aplicação. Como elucidado na seção~\secr{cfs}, durante a compilação os endereços 
+dos canais identificados no arquivo CFS são passados para as tarefas através de 
+\eng{software}. Esta passagem de endereços se concretiza durante a execução do código, 
+quando se criam os {\bf canais de \eng{software}}. Canais de software são instâncias de 
+canais virtuais que, por sua vez, são administrados por 
+hardware (VCP-seção~\secr{t9000_descrip}). Isto retira a carga administrativa do 
+programador sobre os canais utilizados numa aplicação. 
+
+A criação dos canais é implementada no arquivo CFS; porém, para que estes canais 
+estejam visíveis à aplicação é necessário ``capturar'' os endereços de tais canais 
+disponíveis após a inicialização. Isto pode ser implementado com a função 
+\raw{get\_param()} de \raw{misc.h}. Esta função recolhe os parâmetros descritos no 
+arquivo CFS dentro da seção \raw{interface} em cada processo. A seguir, um exemplo 
+cruzado (mostrando o arquivo CFS e o arquivo em C) de utilização de tal função:
+
+No arquivo cfs:
+\begin{verbatim}
+...
+process(stacksize=500k, heapsize=1000k, interface(input HostIn, 
+	output HostOut, input From_pipe, output To_pipe)) receiver;
+...
+\end{verbatim}
+Passamos vários parâmetros para a tarefa \raw{receiver}; neste caso todos são canai; 
+devemos capturá-los na aplicação C, veja:
+\begin{verbatim}
+#include <misc.h>
+#include <channel.h>
+...
+Channel *input1 = get_param(1);
+Channel *output1 = get_param(2);
+Channel *input2 = get_param(3);
+Channel *output2 = get_param(4);
+...
+\end{verbatim}
+
+\index{canais!definição}
+Canais são ponteiros para áreas de memória no processador virtual de canais, por 
+isto seus identificadores recebem um ``$*$'' (inerente à sintaxe da linguage C).
+
+É possível a criação de vetores e matrizes de canais, visto que são tipos de dados tão 
+robustos quanto quaisquer outros tipos em C. Rotinas especiais foram desenvolvidas 
+pela TELMAT e podem ser encontradas nos exemplos, em \raw{c:\bsl exercice\bsl 
+tp\bsl $*.*$}.
+
+Existem rotinas especiais para a operação de canais ou vetores de canais, entre elas
+a função \raw{ProcAlt()} de \raw{process.h} que pode detetar em um conjunto de 
+canais de entrada (tipo \raw{input}) algum que queira se comunicar com a aplicação. 
+Uma explicação mais detalhada do funcionamento de tais rotinas pode ser visto em 
+\cite{telmat:manual} e \cite{telmat:ansi_c_refman}.
+
+\paragraph{Comunicação entre tarefas.}\index{Comunicação entre tarefas} É possível 
+utilizar canais para comunicação  
+entre tarefas usando as funções de \raw{channel.h}. Esta biblioteca inclui um 
+conjunto extenso de funções dedicadas à comunicação de inteiros, números reais, 
+caracteres ou mensagens de tamanho variável.
+
+A utilização é simples: depois de declarados, os canais podem ser utilizados para 
+mandar ou receber quaisquer volume de dados de outras aplicações. Lembra-se aqui que
+canais são unidirecionais e devem ter sua correspondência em duas tarefas 
+distintas. Em outras palavras, para cada canal de entrada em 
+uma aplicação deve haver um canal de saída correspondente na mesma ou em tarefas 
+diferentes.
+
+A comunicação por canais é {\bf totalmente bloqueante}\index{canais!bloqueio}. Isto 
+quer dizer que a tarefa 
+que tenta enviar/receber uma mensagem fica parada neste ponto até que outra tarefa 
+receba/envie a informação esperada\footnote{Se os protocolos de comunicação por 
+canais não forem compatíveis (exemplo: uma tarefa passa um inteiro enquanto a outra 
+está esperando um caractere) pode haver um \eng{dead-lock}.}. Fica óbvio que canais 
+não correspondidos causam um \eng{dead-lock}\index{dead-lock} na tarefa.
+
+A tabela~\tabr{channel.h} mostra algumas das funções e tipos em \raw{channel.h}. A 
+figura~\figr{chan_op} exemplifica a comunicação entre duas tarefas de uma mesma 
+aplicação.
+
+\begin{table}
+ \caption{Algumas das funções e tipos em \raw{channel.h} (Retirado de 
+\cite{telmat:ansi_c_refman}).}
+ \tabl{channel.h}
+ \begin{center}
+ \begin{tabular}{|r||l|} \hline
+ Function & Description \\ \hline \hline
+ ChanIn & Inputs a message on a channel \\ \hline
+ ChanInChar & Inputs a character on a channel \\ \hline
+ ChanInFloat & Inputs a real on a channel \\ \hline
+ ChanInInt & Inputs an integer on a channel \\ \hline
+ ChanOut & Outputs a message on a channel \\ \hline
+ ChanOutChar & Outputs a character on channel \\ \hline
+ ChanOutFloat & Outputs a real on channel \\ \hline
+ ChanOutInt & Outputs an integer on channel \\ \hline
+ ChanVIn & Inputs a variable length message on a channel \\ \hline
+ ChanVOut & Outputs a variable length message on a channel \\ \hline
+ \end{tabular} \\
+ \begin{tabular}{|r||l|} \hline
+ Type & Description \\ \hline \hline
+ Channel & The channel type \\ \hline
+ \end{tabular}
+ \end{center}
+\end{table}
+\index{funções de channel.h} 
+
+Todas as funções descritas na tabela~\tabr{channel.h} possuem um equivalente 
+otimizado para comunicação em canais reais implementados via \eng{hardware} (caso 
+específico de aplicações em InMOS C). Elas são mais rápidas e suas funções são as 
+mesmas; para saber seus nomes apendicione a palavra ``\raw{Direct}'' em cada função da 
+tabela~\tabr{channel.h}. Exemplo: \raw{DirectChanInInt}.\index{Direct Channels}
+
+\begin{figure} 
+ \begin{center}
+ \caption{Esquema de uma comunicação entre tarefas utilizando canais.} 
+ \figl{chan_op} 
+ \input{picts/chan_op.pic}
+ \end{center}
+ Os códigos nas aplicações ap1 e ap2 responsáveis por esta troca:\\
+ {\large\bf\underline{ap1.c}}
+\begin{verbatim}
+#include <misc.h>
+#include <channel.h>
+...
+Channel *OUT = get_param(3);
+int k = 4;
+...
+ChanOut(OUT, &k, sizeof(k)); 
+\end{verbatim} 
+ {\large\bf\underline{ap2.c}}
+\begin{verbatim}
+#include <misc.h>
+#include <channel.h>
+...
+Channel *IN = get_param(1);
+int receive;
+...
+ChanIn(IN, &receive, sizeof(receive)); 
+\end{verbatim}
+\end{figure}
+\index{canais!diagrama esquemático de um exemplo} 
+
+\subsection{Resumindo a seção\ldots}
+\index{TN310!Resumo}
+
+O sistema TN310 é um computador com sistema distribuído por 16 nós de processamento 
+baseado no padrão HTRAM (tamanho 4). Cada nó possui 1 transputer T9000, 1 ADSP 21020,
+8 Megabytes de memória RAM e 256 Kilobytes de \eng{buffer}(única ponte do DSP com outras 
+partes do sistema). Este 16 nós estão totalmente conectados uns aos outros por uma 
+rede de chaves muito rápidas, as STC104.
+
+Segundo a classificação de Flynn, esta é uma máquina MIMD com memória distribuída. 
+Nestes casos, a comunicação entre os diversos processadores se dá através da passagem
+de mensagens pela rede de chaves. Uma vez  que os processadores estão conectados 
+através de diferentes números de chaves, a comunicação entre pares distintos de 
+processadores pode ser mais ou menos custosa em termos temporais.
+
+A implementação de aplicações se dá em 2 niveis independentes, a configuração do 
+\eng{hardware} e o dimensionamento da aplicação feito em InMOS C, que é uma versão 
+alterada do ANSI C, criada para suportar funções típicas de sistemas concorrentes. Os 
+2 níveis 
+de implementação da aplicação se juntam através da compilação, utilizando um arquivo
+de configuração que determina a localização de cada tarefa na rede e aloca os 
+canais nos VCP-s de cada processador. VCP-s são elementos de \eng{hardware}, 
+implementados no próprio \eng{transputer}, que gerenciam a utilização dos canais 
+reais do processador (chamados de DS-Links) multiplexando inúmeros canais 
+concorrentes (canais virtuais) e removendo da responsabilidade do programador tal 
+tarefa.
+
+O InMOS C ToolSet possui funções e ferramentas que podem ser utilizadas para a 
+programação de aplicações no segundo nível. As ferramentas incluem aplicativos 
+Windows (entre eles depuradores e executores) e ferramentas de compilação. Dentre as 
+funções adicionadas à linguagem ANSI C estão aquelas que lidam com canais, existem 
+funções específicas para a troca de variáveis simples e versões otimizadas que podem
+rodar sobre canais virtuais implementados em \eng{hardware}, como é o caso da programação 
+em InMOS C.
+
+Além da possibilidade da programação em C é possível utilizar PVM ou rotinas 
+embutidas em um $\mu$Kernel chamado RuBIS. Existe uma troca entre flexibilidade e 
+tempo de execução quando trocamos a camada de implementação.
+
+\section{Técnicas de Paralelismo}
+\index{Técnicas de Paralelismo}
+
+Discutiremos aqui algumas técnicas de paralelização levadas em consideração durante o 
+desenvolvimento de nossa aplicação (simulação de parte do segundo nível de validação para o 
+experimento ATLAS/LHC).
+
+Durante o desenvolvimento de aplicações que operem em um ambiente distribuído, é 
+necessário que o programador observe princípios básicos durante a fase de construção
+do programa. Estes princípios são técnicas que permitem o desenvolvimento de 
+aplicações paralelas.
+
+O termo ``paralelo'' implica operações realizadas concorrentemente. Concorrer 
+significa disputar. O termo indica que em ambientes onde há paralelismo as 
+diversas tarefas que compõe uma aplicação são executadas de forma que o máximo de 
+cada tarefa seja executado utilizando um mínimo de tempo, como numa disputa. Operações 
+concorrentes devem ser organizadas da melhor forma possível para reduzir o tempo de 
+processamento global, este é o objetivo final da utilização de ambientes 
+distribuídos.
+
+Paralelismo é a execução simultânea de instruções em múltiplos nós de processamento.
+A concorrência ou paralelismo pode ser atingida durante a construção de uma 
+aplicação para a execução de uma tarefa de 2 maneiras, através de competição ou 
+cooperação. Num ambiente distribuído cooperativo as diversas instruções são 
+executadas como em um \eng{pipeline} de instruções; desta forma, se o sistema deve 
+tratar um dado segundo 3 tipos de filtragem consecutivas é possível utilizar 
+processadores operando cooperativamente para realizar o trabalho. Assim, quando o 
+processador acabar de operar sobre um dado, o segundo começa e depois o terceiro, 
+mas ao mesmo tempo que um filtro libera o dado para o próximo estágio, já pode 
+carregar outro dado diferente, reduzindo o tempo de execução final. No caso de 
+trabalho competitivo, temos vários processadores operando com as mesmas instruções 
+sobre conjuntos diferentes de dados; à medida que os nós de 
+processamento finalizam seu conjunto de instruções, recebem mais dados. 
+
+Dois fatores estão envolvidos na paralelização de uma aplicação:
+\begin{itemize} 
+ \item Fator ``Quantitativo'': introduz a noção da quantidade de paralelismo 
+inerente a uma aplicação (subjetivo); 
+ \item Fator Qualitativo: constitui a qualificação da atividade quanto a 3 
+diferentes técnicas de paralelismo:
+\begin{enumerate} 
+ \item Paralelismo de Controle;
+ \item Paralelismo de Dados;
+ \item Paralelismo de Fluxo.
+\end{enumerate}
+\end{itemize}
+
+As aplica\-ções podem ser paralelizadas por divi\-são em muitas tarefas ou pela 
+duplica\-ção de ins\-tân\-cias de processamento capazes de processar competitivamente sobre 
+os mesmos tipos de dados. A melhor forma de paralelizar uma aplicação é utilizando 
+um híbrido destes dois métodos, de forma a reduzir ao dependência entre diferentes 
+tarefas. A dependência é um fator que indica uma seqüela na paralelização de uma 
+aplicação pois processos dependentes atrasam-se tanto quanto necessário para 
+manterem esta relação. Exemplo de dependência pode ser visto na construção de uma 
+casa: a construção do telhado depende da construção das paredes, que depende da 
+construção da fundação; logo, estas atividades não são paralelizáveis devendo ser 
+executadas sequencialmente.
+
+\subsection{Paralelismo de Controle}
+\index{Técnicas de Paralelismo!Paralelismo de Controle}
+
+Esta técnica de paralelização é utilizada em aplicações nas quais as diversas instruções 
+podem ser separadas em blocos diferentes sem que haja necessidade de um bloco 
+auxiliar outro na execução de sua parte da tarefa. Isto quer dizer que os processos 
+são totalmente independentes. Possíveis dependências ocorrem quando o trabalho 
+executado por um bloco de instruções não pode prosseguir até que outro bloco libere 
+um resultado (o exemplo da casa, descrito acima); a dependência de um bloco na execução de uma 
+tarefa de outro bloco introduz uma sequencialização da aplicação. O objetivo neste 
+tipo de paralelização é reduzir ao máximo este tipo de dependência.
+
+O tempo de execução final é avaliado segundo o tempo de execução de cada bloco e as 
+relações de dependência entre eles. Se os blocos forem totalmente independentes, o 
+tempo de execução será igual ao tempo de execução do maior dos blocos.
+
+A figura~\ref{fig:control} pode ser elucidativa com relação a tal técnica. Na parte 
+(a), vemos uma aplicação na qual podemos dividir sua execução em blocos 
+independentes. Na segunda parte, parte (b), vemos uma aplicação que possui 
+dependência na execução de alguns de seus blocos, levando a trechos de 
+sequencialidade e, portanto, reduzindo a eficácia da paralelização.
+
+\begin{figure} 
+ \begin{center}
+ \caption{O paralelismo de controle num diagrama de blocos.} 
+ \figl{control} 
+ \input{picts/control.pic}
+ \end{center}
+\end{figure}
+\index{Técnicas de Paralelismo!Paralelismo de Controle!Diagrama ilustrativo} 
+
+\subsection{Paralelismo de Dados}
+\secl{data_par}
+\index{Técnicas de Paralelismo!Paralelismo de Dados}
+
+Existem muitos casos com que nos deparamos durante nossa vida onde a
+execução de uma tarefa se dá repetidas vezes. A exemplo podemos ver o ato de 
+descascar batatas; cada batata pode ser diferente, ainda que o trabalho seja o mesmo, 
+descascá-las. É possível paralelizar uma tarefa como esta se utilizarmos mais de uma
+pessoa trabalhando com as batatas, quanto mais pessoas, maior será o 
+\eng{speed-up} da tarefa. Outro exemplo é o de entregar pizzas; quanto mais 
+entregadores, mais rápido o serviço acaba.
+
+A tradução de tais tarefas para programadores deve ser: ``Uma aplicação é 
+ dado-paralelizável se estamos trabalhando com matrizes ou vetores onde pequenas 
+porções das matrizes ou escalares dos vetores devam receber o mesmo tratamento, seja
+ ele qual for: filtragem, multiplicação ou cálculo de um função não-linear 
+utilizando aquele pedaço da matriz ou o escalar que compõe o vetor''. É possível 
+reduzir o tempo de execução, se paralelamente executarmos estes algoritmos de 
+filtragem (ou multiplicação ...) em cada parte do dado-alvo. 
+
+No paralelismo de dados existe, via de regra, uma hierarquia entre as aplicações. 
+Isto acontece porque normalmente os dados são passados às aplicações que executam a 
+função-alvo (multiplicação, filtragem ou qualquer que seja), geralmente chamadas de 
+\eng{slaves}, via uma aplicação controladora de todo o processo, a aplicação 
+\eng{master}. A ``seqüencialização'' da aplicação acontece quando temos que passar 
+os dados da aplicação mestra aos escravos. Esta passagem de dados aumenta o tempo de
+ execução da tarefa, assim reduzindo o \eng{speed-up} final.
+
+Aqui, a concorrência é um fator que pode ser bem visualizado. Escravos que recebem
+dados mais trabalhosos demoram mais para processar. Isto significa que 
+estas tarefas (escravas) receberão menos dados que outras que consigam processar mais 
+rapidamente\footnote{Um ambiente misto, com diferentes tipos de nós de processamento
+pode, por exemplo, ocasionar neste tipo ocorrência.}.
+
+A figura~\figr{data} mostra um esquema da utilização de paralelismo de dados em uma 
+aplicação genérica.
+
+\begin{figure} 
+ \begin{center}
+ \caption{Um diagrama mostrando a paralelização de uma aplicação utilizando a 
+técnica de paralelismo de dados.} 
+ \figl{data} 
+ \input{picts/data.pic}
+ \end{center}
+\end{figure} 
+
+\subsection{Paralelismo de Fluxo}
+
+Algumas aplicações são baseadas em um modelo tipo \eng{pipeline}. Um exemplo é a 
+construção de uma casa. Inicialmente constrói-se a fundação, depois as paredes, o 
+encanamento e tubulações, e aí faz-se o telhado. Se tivermos que construir 100 casas,
+ o trabalho é paralelizável, ainda que haja dependência entre as tarefas. É possível 
+destacar um grupo que somente construa fundações, este grupo constrói a primeira 
+fundação, depois constrói a segunda e, ao mesmo tempo, outro grupo responsável por 
+erguer paredes as ergue sobre a fundação da primeira casa, já construída. Quando o 
+grupo de fundações atinge a vigésima casa, o grupo de construções de paredes estará 
+na décima-nona (se as atividades forem executáveis no mesmo espaço de tempo), o grupo
+ do encanamento estará na décima-oitava e o de construção de telhado, na 
+décima-sétima. Desta forma, reduzimos o tempo de execução da tarefa.
+
+Este tipo de paralelização, formando uma espécie de ``linha de montagem'', é chamado 
+de paralelismo de fluxo. A seqüencialização é inserida quando temos tarefas que 
+demoram mais para ser realizadas que outras, desta forma atrasando todo o bloco. 
+Neste tipo de paralelismo cada subtarefa executa uma parte do todo a ser executado 
+para a aplicação. A figura~\figr{flow} pode ser elucidativa quanto a este tipo de 
+paralelização.
+
+\begin{figure} 
+ \begin{center}
+ \caption{Um \eng{pipe} de dados. O paralelismo de fluxo é aconselhável aqui.} 
+ \figl{flow} 
+ \input{picts/flow.pic}
+ \end{center}
+\end{figure} 
+
+
+\subsection{O que usar na aplicação?}
+
+Infelizmente um problema geralmente não contém somente um tipo de paralelismo, e a 
+utilização de todas as técnicas aqui mencionadas torna-se fundamental para que 
+atinjamos o maior \eng{speed-up} possível. 
+
+O que utilizar em cada momento deve levar em conta alguns fatores de 
+seqüencialização da aplicação já paralelizada; são eles:
+\begin{itemize} 
+ \item Controle
+\begin{enumerate} 
+ \item A dependência entre as diversas subtarefas;
+ \item A sequencialização devido à falta de nós de processamento (recursos)
+\end{enumerate}
+ \item Dados
+\begin{enumerate} 
+ \item O tamanho do dado (comparativamente à memória disponível)
+ \item Dados escalares
+\end{enumerate}
+ \item Fluxo
+\begin{enumerate} 
+ \item Estado transitório (o tempo que demora até que o \eng{pipe} comece a 
+operar);
+\end{enumerate}
+\end{itemize}
+
+\section{Os dados utilizados neste projeto}
+
+Nesta seção estaremos comentando a procedência e validade dos dados utilizados no 
+projeto. Uma vez que estamos interessados em informações de tempos de execução, os 
+dados utilizados foram em número reduzido. Somente houve necessidade de utilizar 
+dados reais durante a fase de testes da unidade de decisão global, identificando a 
+RoI.
+
+Foram simulados dados que partiriam de 4 detetores distintos segundo quatro 
+possíveis decaimentos de Higgs em outras partículas. Os detetores são: um calorímetro 
+altamente granulado, um \eng{Preshower} segmentado (SCT), um Detetor de Transição de 
+Radiação (TRT) e um Detetor de  Múons. Os eventos simulados foram gerados usando 
+um algoritmo computacional conhecido como Monte Carlo, assegurando a aleatoriedade e 
+diversidade dos mesmos. Ainda, as partículas analisadas nesta fase (decisão global) 
+englobam 4 tipos de reações, representadas nas equações~\ref{eq:hzz4e}, 
+\ref{eq:hzz2e2j}, \ref{eq:hzz2e2mu} e \eqr{hzz4mu}.
+
+\begin{equation}
+\label{eq:hzz4e}
+Higgs \Longrightarrow Z Z \Longrightarrow 4 e^{-}.
+\end{equation}
+\begin{equation}
+\label{eq:hzz2e2j}
+Higgs \Longrightarrow Z Z \Longrightarrow 2 jets + 2 e^{-}.
+\end{equation}
+\begin{equation}
+\label{eq:hzz2e2mu}
+Higgs \Longrightarrow Z Z \Longrightarrow 2 e^{-} + 2\mu.
+\end{equation}
+\begin{equation}
+\label{eq:hzz4mu}
+Higgs \Longrightarrow Z Z \Longrightarrow 4 \mu.
+\end{equation}
+
+Estas reações sobreviveram ao primeiro nível de chaveamento, que também foi simulado. O 
+espaço de variáveis a serem analisadas engloba identificadores de evento, RoI-s e 
+chaveamento, variáveis físicas como momento e ângulo e variáveis de decisão como 
+segundo momento, energia de isolaçao etc.
+

@@ -1,0 +1,151 @@
+\chapter{Exemplo comentado de arquivo CFS}
+\label{ap:cfs}
+
+Neste apêndice apresentamos um arquivo de configuração da aplicação detalhadamente 
+comentado. A aplicação à que se destina é simples: a tarefa principal, neste arquivo 
+chamada de \eng{receiver}, recebe do usuário um número inteiro e o repassa através de
+um canal para a primeira de 10 aplicações \eng{adder}. Estas últimas têm a função de
+somar um ao número em seus canais de entrada e re-passar o número resultante ao 
+próximo somador até que o último repasse o resultado obtido para a aplicação 
+\eng{receiver}. O diagrama na figura~\figr{pipeline} pode ser elucidativo quanto à 
+topologia da aplicação. É uma das funções do arquivo de configuração da aplicação garantir 
+esta topologia durante a execução.
+
+\begin{figure} 
+ \begin{center}
+ \caption{A topologia de conexões entre as tarefas da aplicação \eng{PIPELINE}.} 
+ \figl{pipeline} 
+ \input{picts/pipeline.pic}
+ \end{center}
+\end{figure} 
+
+Repare que somente uma aplicação fica conectada ao sistema hospedeiro\footnote{A 
+menos que utilize-se uma aplicação multiplexadora, todas as aplicações somente podem 
+possuir 1 única tarefa conectada ao sistema hospedeiro.}, isto se deve 
+ao fato desta conexão ser feita somente através de 2 canais de \eng{hardware} 
+unidirecionais. Não há necessidade da aplicação estar alocada em um nó especial, 
+ainda que, como é possível se observar na figura~\figr{connect}, o nó mais apropriado para 
+esta aplicação é o nó 0 (zero). Isto é verdade graças a existência de apenas uma 
+chave conectando o nó em questão ao sistema hospedeiro, o que não é verdade para 
+qualquer outro nó como visto na figura.
+
+Deve-se também notar que o diagrama esboçado na figura~\figr{pipeline} de nenhuma 
+forma é relacionado ou dependente do diagrama da figura~\figr{connect}. Isto é 
+observável pela quantidade de processadores utilizados na aplicação(11) comparado 
+como o número de processadores disponíveis na inicialização do sistema(16). Ainda, 
+também temos que o número de canais disponíveis por nó e totalizando 64 canais não 
+são totalmente utilizados na aplicação. Durante a criação do arquivo de 
+inicialização uma mensagem avisa o usuário que alguns dos nós não estão sendo 
+utilizados ainda que isto não prejudique em nada a execução da aplicação.
+
+Com isto em mente podemos re-afirmar(seção~\secr{develop_app}) que a programação de 
+uma aplicação é feita em 2 níveis distintos: um no qual descreve-se a configuração 
+do sistema em baixo nível usando NDL e o outro em descrevemos a aplicação com suas 
+tarefas a serem executadas usando C Concorrente. O arquivo de configuração funciona 
+como um ``cimento'' a estas duas descrições que devem operar fundidas num único 
+arquivo de inicialização.
+
+Agora o arquivo \raw{pipeline.cfs}
+
+Os comentários são como em C.
+
+O arquivo de incialização a ser utilizado, e seu tipo. O tipo pode
+ser \raw{ndl}, arquivo texto ou \raw{nif} uma versão binária e mais confiável 
+do arquivo ndl. Esta versão pode ser produzida utilizando-se os programas
+indl.exe e inif.exe localizados em \raw{c:\bsl d7394a\bsl tools} as instruções podem
+ser encontradas em \cite{telmat:ts_refman}.
+
+\begin{verbatim}
+\# network "tn310.ndl" "ndl"
+\end{verbatim}
+
+Declaração de algumas constantes, \raw{pipe} é o número de somadores e 
+processors o número de processadores disponíveis na máquina
+\begin{verbatim}
+val pipe 10;
+val processors 16;
+\end{verbatim}
+
+Declara as tarefas da aplicação (palavra-chave \raw{process}), cada tarefa
+tem um espaço de stack(variáveis) bem definido assim como um espaço de 
+heap. A palavra chave \raw{interface} designa a passagem de parâmetros para a
+aplicação, os parâmetros incluem canais(palavras-chave \raw{input}-canal de 
+entrada e \raw{output}-canal de saída), vetores, inteiros ou qualquer 
+tipo conhecido no T9000 C ToolSet. Canais são sempre unidirecionais. Ao fim
+designa-se o nome da tarefa.
+
+Tarefas iguais podem ser tratadas como vetores aqui. As aplicações
+\raw{adder} são em número de 10 ao total, embora a declaração seja única.
+\begin{verbatim}
+process(stacksize=500k, heapsize=1000k, interface(input HostIn, 
+	output HostOut, input From_pipe, output To_pipe)) receiver;
+
+process(stacksize=500k, heapsize=1000k, interface(input NumIn, 
+	output NumOut)) adder[pipe];
+\end{verbatim}
+
+Declara canais sem aplicação específica
+\begin{verbatim}
+input hostin;
+output hostout;
+\end{verbatim}
+
+Atribui canais ao sistema hospedeiro, somente podem existir 2
+\begin{verbatim}
+place hostin on host;
+place hostout on host;
+\end{verbatim}
+
+Conecta o hospedeiro à tarefa \raw{receiver}
+\begin{verbatim}
+connect receiver.HostOut to hostout;
+connect receiver.HostIn to hostin;
+\end{verbatim}
+
+Conecta o \raw{receiver} ao \eng{pipe}
+\begin{verbatim}
+connect receiver.From_pipe to adder[pipe-1].NumOut;
+connect receiver.To_pipe to adder[0].NumIn;
+\end{verbatim}
+
+Conecta cada um dos somadores entre si formando uma linha
+\begin{verbatim}
+rep i=1 for (pipe-1)
+	connect adder[i-1].NumOut to adder[i].NumIn;
+\end{verbatim}
+
+Diz que utilizar-se-á o código em \raw{receiver.c}(compilado e ``linkado'' às 
+diversas bibliotecas na forma de \raw{receiver.lku}) para a tarefa \raw{receiver}
+\begin{verbatim}
+use "receiver.lku" for receiver;
+\end{verbatim}
+
+Repete o procedimento anterior para cada somador usando \raw{adder.c}
+\begin{verbatim}
+rep i=1 for pipe
+	use "adder.lku" for adder[i-1];
+\end{verbatim}
+
+Identifica nó onde será alocada a tarefa \raw{receiver}
+\begin{verbatim}
+place receiver on Dsp[0];
+\end{verbatim}
+
+Faz o mesmo para cada somador, repare que a distribuição de tarefas
+ao longo dos processadores de dá de acordo com a constante \raw{processors}. 
+O comando \raw{i\%processors} retorna o resto da divisão de \raw{i} por 16, assim se
+tivermos \raw{pipe} maior que 15 não haverá problema pois será alocado em 
+processadores válidos(o resto da divisão por 16 é menor que 16 sempre).
+Isto comprova a versatilidade de tal sistema de programação, o número de 
+tarefas não é restrito ao número de nós de processamento, ou seja, é possível
+alocar mais de uma tarefa(mesmo com diferentes códigos) em um mesmo processador
+desde que se respeite a quantidade de memória alocada para cada uma. A exemplo,
+não é possivel alocar 5 tarefas em um mesmo processador se utilizarem
+um {\bf total} de 2Megabytes cada pois cada nó somente possui 8Megabytes. Tal
+tentativa {\bf não} é frustrada com um erro de compilação, mas aborta a execução
+aplicação.
+\begin{verbatim}
+rep i=1 for pipe
+	place adder[i-1] on Dsp[i%processors];
+\end{verbatim}
+

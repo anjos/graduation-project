@@ -1,0 +1,96 @@
+\chapter{Exemplo de arquivo \raw{Makefile}}
+\label{ap:makefile}
+
+Aqui apresentaremos o exemplo comentado de um arquivo tipo \raw{makefile}. Estes 
+arquivos são utilizados juntos com o programa \raw{make.exe} para facilitar o 
+processo de compilação de programas em geral. Aqui o direcionamos para que compile 
+aplicações em InMOS C(C Concorrente para o sistema TN310). A aplicação em questão 
+utiliza 8 tipos diferentes de códigos em C. Isto, em maneira nenhuma, limita o 
+número de processos a serem criados pois alguns deles podem usar o mesmo código como
+vimos no apêndice~\ref{ap:cfs}.
+
+Definimos inicialmente algumas constantes como o compilador \raw{ICC} e \eng{flags} 
+em \raw{ICCOPT}.
+\begin{verbatim}
+ICC=icc
+ILINK=ilink
+HCCONF=inconf
+ICOLLECT=icollect
+INIF=inif
+IMAP=imap
+ILINKOPT=-T9000 -GAMMAE -MO $(<:%.tco=%.dku)
+HCCONFOPT=-GA
+ICOLLECTOPT=-p level2.map
+INIFOPT=
+IMAPOPT=
+ICCOPT=-GAMMAE -T9000 -G 
+SOURCES = master.c time_cal.c time_trt.c time_pre.c time_muo.c ln0.c ln1.c global.c
+OBJECTS= $(SOURCES:%.c=%.tco)
+
+.SUFFIXES : .c .tco
+\end{verbatim}
+
+Agora define-se as diretivas de compilação, a diretiva \raw{all} é a \eng{default} 
+sendo executada se o programa \raw{make.exe} for chamado sem parâmetros. Um processo
+ interessante aqui é que as únicas diretivas realmente independentes são as de 
+compilação dos arquivos em C, todas as outras dependem da execução de outras 
+diretivas(indicado ao lado do sinal ``:''). Assim, se instruirmos o aplicativo para 
+gerar \raw{all}(ou \raw{level2.btl}) teremos uma compilação recursiva que passará 
+por todas as fases anteriores e necessárias a execução desta fase, i.e., haverá 
+compilação do código em C, ele será ``linkado'', configurado e aí sim será coletado 
+num arquivo com extensão \raw{btl}.
+\begin{verbatim}
+all :  level2.btl
+
+.c.tco :
+	$(ICC) $< $(ICCOPT) -o $@ -p $(<:%.c=%.mco)
+
+level2.btl : level2.cfb
+	$(ICOLLECT) level2.cfb $(ICOLLECTOPT)
+
+level2.cfb: level2.cfs master.lku time_cal.lku time_trt.lku time_pre.lku 
+            time_muo.lku ln0.lku ln1.lku global.lku
+	$(HCCONF) level2.cfs $(HCCONFOPT)
+
+master.lku : master.tco
+	$(ILINK) master.tco -o master.lku -f cdebug.lnk $(ILINKOPT)
+
+time_cal.lku : time_cal.tco
+	$(ILINK) time_cal.tco -o time_cal.lku -f cdebugrd.lnk $(ILINKOPT)
+
+time_trt.lku : time_trt.tco
+	$(ILINK) time_trt.tco -o time_trt.lku -f cdebugrd.lnk $(ILINKOPT)
+
+time_pre.lku : time_pre.tco
+	$(ILINK) time_pre.tco -o time_pre.lku -f cdebugrd.lnk $(ILINKOPT)
+
+time_muo.lku : time_muo.tco
+	$(ILINK) time_muo.tco -o time_muo.lku -f cdebugrd.lnk $(ILINKOPT)
+
+ln0.lku : ln0.tco
+	$(ILINK) ln0.tco -o ln0.lku -f cdebugrd.lnk $(ILINKOPT)
+
+ln1.lku : ln1.tco
+	$(ILINK) ln1.tco -o ln1.lku -f cdebugrd.lnk $(ILINKOPT)
+
+global.lku : global.tco
+	$(ILINK) global.tco -o global.lku -f cdebugrd.lnk $(ILINKOPT)
+
+map : level2.btl
+	$(IMAP) level2.map -o level2.bcm  $(IMAPOPT)
+
+clean:
+	 del  *.tco
+	 del  *.lku
+	 del  *.cfb
+	 del  *.btl
+	 del  *.map
+	 del  *.bcm
+	 del  *.mco
+	 del  *.dku
+	 del  *.bak
+\end{verbatim}
+A diretiva \raw{clean} comanda o apagamento de todos os arquivos gerados durante a 
+compilação.
+
+

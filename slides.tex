@@ -1,0 +1,37 @@
+%% Avisa usuario sobre pacotes e versao do LaTeX, nao retire!!!
+\typeout{AVISO: ESTE FONTE FOI DESENVOLVIDO UTILIZANDO LaTeX2E!!}
+\typeout{PACOTES: SLIDES, BABEL[english,portuguese], INPUTENC(latin1), GRAPHICX}
+\typeout{SEM TAIS PACOTES INSTALADOS O FONTE NAO SERA COMPILADO DIREITO!!!}
+\typeout{Produzido por Andre Rabello dos Anjos em Setembro de 1997.}
+                                                                                                   
+\documentclass[a4paper,titlepage]{slides} %% slides class. Also sets for A4 paper type.
+                                           
+\usepackage[latin1]{inputenc} %% holds ascii as accented chars
+\usepackage[french,english,portuguese]{babel} %% sets portuguese as native
+\usepackage{graphicx} %% new graphics package
+\usepackage{emlines2} %% for pictures
+\usepackage{color} %% for colors
+
+%% Include all these
+\includeonly{slides/intro, slides/ftmm, slides/project, slides/time, slides/discuss}
+
+%% Title and Authors
+\title{Sistema de Classificação Baseado em uma Máquina com Processamento Distribuído}
+\author{{\bf \underline{André Rabello dos Anjos}}}
+
+\begin{document}
+
+%% Command definitions
+\input{com_def.tex}
+
+\maketitle
+
+%% The slides 
+\include{slides/intro} %% Introduction slides
+\include{slides/ftmm} %% Theoretical Fundaments, Methods and Materials slides
+\include{slides/project} %% Implementation, Results and Conclusion slides
+\include{slides/time} %% Emulation and Time Benchmark results slides
+\include{slides/discuss} %% Discussion slides
+
+\end{document}
+

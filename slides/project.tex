@@ -1,0 +1,110 @@
+%% This file contains 9 slides
+\begin{slide}
+Modelo de neurônio utilizado
+
+\begin{center}
+{\tiny \input{picts/neuronc.pic}}
+\end{center}
+
+A rede para a GDU
+\begin{center}
+{\tiny \input{picts/gdu_net.pic}}
+\end{center}
+\end{slide}
+
+\begin{slide}
+\begin{center}
+Tabela de conversão
+
+{\tiny \input{picts/lut_ex2.pic}}
+
+GDU em paralelo
+
+{\tiny \input{picts/gdu_full.pic}}
+\end{center}
+\end{slide}
+
+\begin{slide}
+A comunicação com os escravos
+
+{\tiny \input{picts/shake.pic}}
+
+O supervisor (fluxograma)
+z
+\begin{center}
+{\tiny \input{picts/sup_flow.pic}}
+\end{center}
+\end{slide}
+
+\begin{slide}
+{\small
+Resultados para a GDU
+\begin{itemize} 
+ \item O tempo de processamento para uma RoI da GDU rodando em apenas 1 nó é de 200$\mu$s
+ \item Alocando o supervisor no nó zero e 15 escravos o tempo de processamento por 
+RoI é de 30,3$\mu$s (\eng{speed-up} = 6.6)
+ \item Alocando o supervisor no nó 15 e 15 escravos o tempo de processamento cai 
+para 27$\mu$s (\eng{speed-up} = 7.4)
+\end{itemize}
+Conclusões
+\begin{itemize} 
+ \item Tabela de conversão é eficiente - reduzimos o tempo de processamento sem 
+perder eficiência
+ \item A alocação ``inteligente'' de tarefas leva a melhores resultados
+ \item \eng{speed-up} - Bom desempenho, mas é o máximo ? 
+\end{itemize}}
+\end{slide}
+
+\begin{slide}
+À implementar no 2\eiro nível
+
+{\tiny \input{picts/mod_bi2.pic}}
+\end{slide}
+
+\begin{slide}
+Generalização
+
+\begin{center}
+{\tiny \input{picts/top_tn.pic}}
+\end{center}
+\end{slide}
+
+\begin{slide}
+\label{slide:implementa}
+Implementação usando os 16 nós
+
+{\tiny \input{picts/sim_v2a2.pic}}
+\end{slide}
+
+\begin{slide}
+Resultados para a versão em apenas 1 nó
+\begin{itemize} 
+ \item Não leva em consideração tempo de distribuição (necessário)
+ \item Tempo para uma RoI = 1320$\mu$s
+\end{itemize}
+Resultado para a versão concorrente 1 (alocação aleatória)
+
+$\Rightarrow$ Tempo para uma RoI = 830$\mu$s (\eng{speed-up} = 1,6)
+
+Resultado para a versão concorrente 2 (alocação ``inteligente'')
+
+$\Rightarrow$ Tempo para uma RoI = 690$\mu$s (\eng{speed-up} = 1,9)
+
+Resultados para a versão concorrente 3 (distribuição sequencial)
+
+$\Rightarrow$ Tempo para uma RoI = 390$\mu$s (\eng{speed-up} = {\bf 3,4 !})
+\end{slide}
+
+\begin{slide}
+Conclusões
+\begin{itemize} 
+ \item Sabendo que \eng{speed-up} máximo é 4 ($//$ dados e fluxo) atingimos 85\% do 
+máximo
+ \item Melhora de 43\% da versão 3 para a versão 2
+ \item Considerando 1 e\-ven\-to $\approx$ 5 RoI-s $\Rightarrow$ 2ms\-/\-e\-ven\-to (500Hz)
+ \item Lentidão $\Rightarrow$ Tempo de distribuição dos dados para fex-s $\Rightarrow$ 96\% do 
+tempo total de aplicação
+ \item Atingimos o máximo desta tecnologia ?
+\end{itemize}
+\end{slide}
+

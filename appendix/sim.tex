@@ -1,0 +1,1647 @@
+\chapter{Versão final do simulador}
+\label{ap:simulation}
+
+Neste apêndice encontra-se uma cópia do código utilizado para programar o sistema de
+ validação do segundo nível para o experimento ATLAS/LHC na TN310. A modularidade do
+ problema nos levou a criação de 8 blocos diferentes de código em InMOS C. Estes 
+blocos são implantados no sistema via arquivo ``bootável'' gerado a partir da fusão 
+do código C com o arquivo CFS também listado aqui. O código dos arquivos é listado 
+me \raw{letra de máquina} assim como comentários inseridos.
+
+\section{Arquivo CFS (\raw{level2.cfs})}
+\begin{verbatim}
+/* Configuração da rede de transputers */
+
+#network "tn310.ndl" "ndl"
+
+/* Descrição das tarefas */
+
+process (stacksize=500k, heapsize=4000k, priority=high,
+   interface(input host_in, output host_out, input in[10],
+   int in_size = 10, output out[10],int out_size = 10,
+   input f_ln1, output t_ln1, input f_gd[3],int gdin_size=3,
+                      output t_gd[3], int gdout_size=3))master;
+
+process (stacksize=2k, heapsize=20k, priority=high,
+          interface(input in[2],int in_size = 2,
+			output out[2],int out_size = 2,int Ciclos = 5))cal[2];
+
+process (stacksize=2k, heapsize=20k, priority=high,
+          interface(input in[2],int in_size = 2,
+			output out[2],int out_size = 2,int Ciclos = 400))trt[3];
+
+process (stacksize=2k, heapsize=20k, priority=high,
+          interface(input in[2],int in_size = 2,
+			output out[2],int out_size = 2,int Ciclos = 200))pres[3];
+
+process (stacksize=2k, heapsize=20k, priority=high,
+          interface(input in[2],int in_size = 2,
+			output out[2],int out_size = 2,int Ciclos = 10))muon[2];
+
+process (stacksize=400k, heapsize=4000k, priority=high,
+          interface(input in[10],int in_size = 10,
+			output out[10],int out_size = 10, input f_ln1, output t_ln1))ln0;
+
+process (stacksize=600k, heapsize=6000k, priority=high,
+          interface(input in[3],int in_size = 3,
+		output out[3],int out_size = 3, input f_master, output t_master,
+			                                   input f_ln0, output t_ln0))ln1;
+
+process (stacksize=100k, heapsize=1000k, priority=high,
+          interface(input in[2],int in_size = 2,
+			               output out[2],int out_size = 2))gl[3];
+
+/* End Descrição das tarefas */
+
+
+/* Declaração dos canais do PC-Host */
+
+input HostInput;
+output HostOutput;
+
+/* Master <-> PC-Host, std_in e std_out por default */
+connect HostInput to master.host_in;  
+connect master.host_out to HostOutput;
+
+/* Master <-> Redes Neurais dos Detetores */
+connect master.out[0] to cal[0].in[0];
+connect cal[0].out[0] to master.in[0];
+connect master.out[1] to cal[1].in[0];
+connect cal[1].out[0] to master.in[1];
+connect master.out[2] to trt[0].in[0];
+connect trt[0].out[0] to master.in[2];
+connect master.out[3] to trt[1].in[0];
+connect trt[1].out[0] to master.in[3];
+connect master.out[4] to trt[2].in[0];
+connect trt[2].out[0] to master.in[4];
+connect master.out[5] to pres[0].in[0];
+connect pres[0].out[0] to master.in[5];
+connect master.out[6] to pres[1].in[0];
+connect pres[1].out[0] to master.in[6];
+connect master.out[7] to pres[2].in[0];
+connect pres[2].out[0] to master.in[7];
+connect master.out[8] to muon[0].in[0];
+connect muon[0].out[0] to master.in[8];
+connect master.out[9] to muon[1].in[0];
+connect muon[1].out[0] to master.in[9];
+
+/* Local NetWork_0 <-> Redes Neurais dos Detetores */
+connect ln0.out[0] to cal[0].in[1];
+connect cal[0].out[1] to ln0.in[0];
+connect ln0.out[1] to cal[1].in[1];
+connect cal[1].out[1] to ln0.in[1];
+connect ln0.out[2] to trt[0].in[1];
+connect trt[0].out[1] to ln0.in[2];
+connect ln0.out[3] to trt[1].in[1];
+connect trt[1].out[1] to ln0.in[3];
+connect ln0.out[4] to trt[2].in[1];
+connect trt[2].out[1] to ln0.in[4];
+connect ln0.out[5] to pres[0].in[1];
+connect pres[0].out[1] to ln0.in[5];
+connect ln0.out[6] to pres[1].in[1];
+connect pres[1].out[1] to ln0.in[6];
+connect ln0.out[7] to pres[2].in[1];
+connect pres[2].out[1] to ln0.in[7];
+connect ln0.out[8] to muon[0].in[1];
+connect muon[0].out[1] to ln0.in[8];
+connect ln0.out[9] to muon[1].in[1];
+connect muon[1].out[1] to ln0.in[9];
+
+/* Master <-> Local Network_1 */
+connect master.t_ln1 to ln1.f_master;
+connect ln1.t_master to master.f_ln1;
+
+/* Local NetWork_0 <-> Local NetWork_1 */
+connect ln0.t_ln1 to ln1.f_ln0;
+connect ln1.t_ln0 to ln0.f_ln1;
+
+/* Master <-> Global Decision Units */
+connect master.t_gd[0] to gl[0].in[0];
+connect gl[0].out[0] to master.f_gd[0];
+connect master.t_gd[1] to gl[1].in[0];
+connect gl[1].out[0] to master.f_gd[1];
+connect master.t_gd[2] to gl[2].in[0];
+connect gl[2].out[0] to master.f_gd[2];
+
+/* Local NetWork_1 <-> Global Decision Units */
+connect gl[0].out[1] to ln1.in[0];
+connect ln1.out[0] to gl[0].in[1];
+connect gl[1].out[1] to ln1.in[1];
+connect ln1.out[1] to gl[1].in[1];
+connect gl[2].out[1] to ln1.in[2];
+connect ln1.out[2] to gl[2].in[1];
+
+/* Descrição das aplicações + alocação em transputers */
+/* -------------------------------------------------- */
+
+use "master.lku" for master;
+place master on Dsp[1];
+
+use "time_cal.lku" for cal[0];
+place cal[0] on Dsp[4];
+
+use "time_cal.lku" for cal[1];
+place cal[1] on Dsp[7];
+
+use "time_trt.lku" for trt[0];
+place trt[0] on Dsp[2];
+
+use "time_trt.lku" for trt[1];
+place trt[1] on Dsp[3];
+
+use "time_trt.lku" for trt[2];
+place trt[2] on Dsp[9];
+
+use "time_pre.lku" for pres[0];
+place pres[0] on Dsp[5];
+
+use "time_pre.lku" for pres[1];
+place pres[1] on Dsp[6];
+
+use "time_pre.lku" for pres[2];
+place pres[2] on Dsp[10];
+
+use "time_muo.lku" for muon[0];
+place muon[0] on Dsp[11];
+
+use "time_muo.lku" for muon[1];
+place muon[1] on Dsp[12];
+
+use "ln0.lku" for ln0;
+place ln0 on Dsp[13];
+
+use "ln1.lku" for ln1;
+place ln1 on Dsp[14];
+
+use "global.lku" for gl[0];
+place gl[0] on Dsp[15];
+
+use "global.lku" for gl[1];
+place gl[1] on Dsp[8];
+
+use "global.lku" for gl[2];
+place gl[2] on Dsp[0];
+
+/* Implementa canal de software, já declarado, */
+/* em um link real.                            */
+place HostInput on host;
+place HostOutput on host;
+\end{verbatim}
+\section{Supervisor (\raw{master.c})}
+\begin{verbatim}
+/* Simulation Approach 3 */
+#include <stdio.h>
+#include <stdlib.h>
+#include <math.h>
+#include <process.h>
+#include <misc.h>
+#include <time.h>
+#include <channel.h>
+
+/*============================================================*/
+/* Diretivas DEFINE do programa, incluindo nomes e constantes */
+/*============================================================*/
+
+/* Define numero de ROI's para cada RN de detetores */
+#define NROIS_MAX 500 /* Tem que ser múltiplo de 10 pois
+               é o número de linhas das RoB's simuladas */
+#define NO_EVENTOS 500
+#define NO_ROIS_per_EV 10
+
+/* Define arquivos com pesos, normalizaçao
+                    e dados para Global Decision */
+#define ARQUIVO_IN_GLOBAL "..\\input.txt"
+#define TABELA_PARA_TANH "..\\tanh.txt"
+#define ARQUIVO_DE_PESOS "..\\dumps.txt"
+#define ARQUIVO_DE_NORMALIZACAO "..\\normal.txt"
+#define ARQUIVO_DE_SAIDA "outnet3.txt"
+#define ARQUIVO_DE_CHECK "time.txt"
+#define NFEAT 12 /* Define number of features per RoI */
+#define NOUTNET 4 /* Define the number of outputs
+                                from the Global Network */
+#define HEADER_SIZE 5 /* number of fields on the header */
+#define NCAL 2 /* number of processors running
+                                      CALORIMETER FEx'or */
+#define NTRT 3 /* number of processors running TRT FEx'or */
+#define NPRE 3 /* number of processors running SCT FEx'or */
+#define NMUO 2 /* number of processors running MUON FEx'or */
+
+/* Tipos estruturados globais */
+
+struct _hidd_ /* Estruturas para os neurônios da hidden layer */
+{
+ float threshold;
+ float peso[NFEAT];
+ float saida;
+};
+
+struct _outlay_ /* Estruturas para os neurônios da camada de saída */
+{
+ float threshold;
+ float peso[NFEAT];
+ float saida;
+ };
+
+struct _on_ /* Estruturas para a matriz de dados de saída */
+{
+ float outnet[NOUTNET];
+ int header[HEADER_SIZE];
+};
+
+struct _check_ /* Estruturas para checagem de funcionamento */
+{
+ int canal;
+ int tipo;
+ int num;
+ int tempo;
+};
+
+/* Declaração de protótipos das funções utilizadas na aplicação */
+void leia_tabela(float *tb);
+void leia_dumps(struct _hidd_ *hd, struct _outlay_ *ol);
+void leia_norma(float *norm);
+static Channel **CreateChannels (Channel *Channels[],
+                                       int ChannelsSize);
+static void RotateChannels (Channel *Channels[],
+                            int ChannelsSize, int Count);
+static void RearrangeChannels (Channel *Channels[],int ChannelsSize);
+void send_data(Channel *In, Channel *Out, int *det_info,
+     int *hold_det, int *fim, float *vetor_det, int out_size, int ndet);
+
+int main()
+{
+
+/* ******************************************* */
+
+/* ----------------------------- */
+/* Begin Declaração de variáveis */
+/* ----------------------------- */
+
+
+  /* Criação dos canais */
+  
+  int InputSize = (int) *((long int *) get_param(4));
+  int OutputSize = (int) *((long int *) get_param(6));
+  Channel **Input = CreateChannels(get_param(3), InputSize);
+  Channel **Output = CreateChannels(get_param(5), OutputSize);
+
+  Channel *from_ln1 = get_param(7);
+  Channel *to_ln1 = get_param(8);
+  int gdInSize = (int) *((long int *) get_param(10));
+  int gdOutSize = (int) *((long int *) get_param(12));
+  Channel **to_gd = CreateChannels(get_param(11), gdOutSize);
+
+  /* End Channel creation */
+  
+   int i, j, k, fim; /* vars de controle */
+   int hold_calo=0,hold_trt=0,hold_pres=0,hold_muon=0;
+            /* vars de controle para a quantidade de ROI's enviadas */
+   float matriz[NO_EVENTOS][NFEAT];
+   struct _on_ matriz_prob[NO_EVENTOS][NO_ROIS_per_EV];
+   struct _check_ vetor_check[4*NROIS_MAX];
+   
+   FILE *arq_ROIs;
+   FILE *outnet_file;
+   FILE *check_file;
+
+   /* Vars Global Network */
+   float normal[NFEAT]; /* O vetor de normalização */
+   struct _hidd_ hidd[NFEAT]; /* Os neurônios da camada escondida */
+   struct _outlay_ outlay[NOUTNET]; /* Os neurônios da camada de saída */
+   float tab[20001]; /* A tabela de valores para tanh */
+
+   /* Vars de tempo */
+   int inicio, inicio_global, final, acc;
+   int chan_calo=0, chan_trt=0, chan_pres=0, chan_muon=0;
+   float chan_tot, fwaste, facc;
+   unsigned long wasted=0; /* Guarda tempo perdido */
+
+
+   /* Matrizes que simulam dados das RoB's */
+   float vetor_calo[121], vetor_trt[100], vetor_pres[100], vetor_muon[10];
+
+
+   int calo_info[HEADER_SIZE]; /* Declara vetor com dados da RoI */
+   int trt_info[HEADER_SIZE];
+   int pres_info[HEADER_SIZE];
+   int muon_info[HEADER_SIZE];
+
+   int tipo=0; /* Tipo de processador livre
+           0-Calo, 1-TRT, 2-PreS, 3-Múon; default é calo */
+   int fex_num=0; /* qual dos canais é o
+        primeiro FEx'or (ordem inicial), geralmente calo */
+
+   /* Current Date */
+   time_t time_calendar;
+   struct tm *time_struct;
+
+   /* Process Organization from Dsp[0] to Dsp [15] */
+   char proc[16][10] = { "global 2",
+			 "master",
+			 "trt 0",
+	       "trt 1",
+	       "calo 0",
+	    	 "pres 0",
+	       "pres 1",
+			 "calo 1",
+			 "global 1",
+			 "trt 2",
+			 "pres 2",
+			 "muon 0",
+		    "muon 1",
+		    "ln 0",
+		    "ln 1",
+			 "global 0"};
+
+
+/* --------------------------- */
+/* End Declaração de variáveis */
+/* --------------------------- */
+
+/* ***************************** */
+
+/*--------------------*/
+/* Início do programa */
+/*--------------------*/
+
+ /* Date init */
+
+ time(&time_calendar);
+ time_struct = localtime(&time_calendar);
+
+ /* Inicializa matrizes RoB's */
+ for(j=0;j<121;j++) vetor_calo[j]=j;
+ for(j=0;j<100;j++)
+ {
+  vetor_trt[j]=j;
+  vetor_pres[j]=j;
+ }
+ for(j=0;j<10;j++) vetor_muon[j]=j;
+ /* End initialization */
+
+printf(" Simulation Approach 03 for level 2 application\n");
+printf("------------------------------------------------\n");
+
+/* le input.txt, dados a serem processados pela
+            Global Decision Unit, mandados para LN1 */
+
+ arq_ROIs=fopen(ARQUIVO_IN_GLOBAL,"r");
+ if (arq_ROIs==NULL)
+ { 
+   printf("\n<master.c>Arquivo de entrada vazio!!!\n");
+   abort();
+ }
+
+ for(k=0;k<NO_EVENTOS;k++)
+   {
+    for(i=0;i<=11;i++)
+     {
+       fscanf(arq_ROIs,"%f",&matriz[k][i]);
+     }
+   }
+
+/* Envia a matriz que contem os vet_ROI's para LN1 */
+ChanOut(to_ln1,matriz,sizeof(matriz));
+printf(" Sent true global data to Local Network 1.\n");
+
+
+/* Feeding Global Decision Workers */
+
+printf("Loading Global Decision Units...\n");
+printf(" -- Particle identification ONLY\n");
+
+/* Lê tabela com valores das tangentes hiperbólicas */
+leia_tabela(tab);
+
+/* Lê arquivos de pesos */
+leia_dumps(hidd,outlay);
+
+/* Lê o arquivo com os valores de normalização */
+leia_norma(normal);
+
+for(i=0;i<gdOutSize;i++)
+{
+ ChanOut(to_gd[i],tab,sizeof(tab)); /* Tabela com tanh */
+ ChanOut(to_gd[i],normal,sizeof(normal)); /* Vetor de
+                                              normalizacao */
+ ChanOut(to_gd[i],hidd,sizeof(hidd)); /* Neuronios da
+                                          camada escondida */
+ ChanOut(to_gd[i],outlay,sizeof(outlay)); /* Neuronios da
+                                           camada de saida */
+ printf("GD Worker #%d, LOADED.\n",i);
+}/* end for(i) */
+
+ printf("\n");
+
+/* Fim do envio de dados para Global Decision Network */
+/* -------------------------------------------------- */
+
+/* ********************************************************* */
+/*   Processamento simulado para o segundo nível de trigger  */
+/*               do experimento LHC/ATLAS                    */
+/* ********************************************************* */
+
+/* Etiqueta e envia dados, etiqueta e se este
+                       é o ultimo (=1) ou não (=0) */
+
+/* Inicializa variáveis de controle */
+for(i=0;i<=4;i++)
+{
+ calo_info[i] = 0; 
+  trt_info[i] = 0; 
+ pres_info[i] = 0; 
+ muon_info[i] = 0;
+}
+
+k = 0; /* Where to begin */
+j = 0; /* counter for check vector */
+fim = 0; /* Indica final do processamento */
+
+/* I want to begin by TRT and SCT, doing initial rotation */
+/* Now => Input == trt0 trt1 trt2 pres0 pres1 pres2
+                                  calo0 calo1 muon0 muon1 */
+RearrangeChannels(Input, InputSize);
+RearrangeChannels(Output, OutputSize);
+
+printf("Processing, wait till end...\n");
+
+inicio_global = ProcTime();
+
+while(fim!=4) /* Soma fim dos 4 tipos de dados: calo, trt, pres e muon */
+{
+ for(i=k;i<InputSize;i++)
+ {
+  inicio = ProcTime(); /* Begins counter */
+  switch(i)
+	 {
+	  case 0:
+	  case 1:
+	  case 2:
+				 if(hold_trt < NROIS_MAX)
+				 {
+				  vetor_check[j].num=hold_trt;
+          /* Guarda numero da RoI em matriz para checagem */
+				  send_data(Input[i],Output[i],trt_info,&hold_trt,
+                                         &fim,vetor_trt,100,NTRT);
+				 }
+				 else
+				 {
+				  vetor_check[j].num = -5; /* Indica que nao
+                                          houve processamento */
+				  k = 3;
+				 }
+				 break;
+	  case 3:
+	  case 4:
+	  case 5:
+				 if(hold_pres < NROIS_MAX)
+				 {
+				  vetor_check[j].num=hold_pres;
+          /* Guarda numero da RoI em matriz para checagem */
+				  send_data(Input[i],Output[i],pres_info,&hold_pres,
+                                         &fim,vetor_pres,100,NPRE);
+				 }
+				 else
+				 {
+				  vetor_check[j].num = -5; /* Indica que nao
+                                          houve processamento */
+				  k = 6; 
+				 }
+				 break;
+	  case 6:
+	  case 7:
+				 if(hold_calo < NROIS_MAX)
+				 {
+				  vetor_check[j].num=hold_calo; 
+          /* Guarda numero da RoI em matriz para checagem */
+				  send_data(Input[i],Output[i],calo_info,&hold_calo,
+                                        &fim,vetor_calo,121,NCAL);
+				 }
+				 else
+				 {
+				  vetor_check[j].num = -5; /* Indica que nao
+                                          houve processamento */
+				  k = 8;
+				 }
+				 break;
+	  case 8:
+	  case 9:
+				 if(hold_muon < NROIS_MAX)
+				 {
+				  vetor_check[j].num=hold_muon;
+         /* Guarda numero da RoI em matriz para checagem */
+				  send_data(Input[i],Output[i],muon_info,
+                          &hold_muon,&fim,vetor_muon,10,NMUO);
+				 }
+				 else
+				 {
+				  vetor_check[j].num = -5;
+            /* Indica que nao houve processamento */
+				  k = InputSize;
+				 }
+				 break;
+	  default: vetor_check[j].num = -5;
+            /* Indica que nao houve processamento */
+	 } /* End switch */
+
+  final=ProcTime(); /* End of cycle */
+  acc=ProcTimeMinus(final,inicio);
+  /* begin save check data */
+  if(vetor_check[j].num != -5)
+  {
+	vetor_check[j].canal = i; /* Channel number */
+	vetor_check[j].tipo = i; /* FEx'or type, RoI already saved */
+	/* Evaluates time in ticks */
+	vetor_check[j].tempo = acc; /* Saves time */
+	j++; /* Increments counter */
+  }
+  else
+  {
+	wasted += acc; /* holds wasted time */
+  }
+  /* end save check data */
+ }/* End for */
+
+} /* End WHILE */
+
+
+/* End Etiqueta e envia dados */
+
+DirectChanIn(from_ln1,matriz_prob,sizeof(matriz_prob));
+final=ProcTime(); /* End final time */
+acc=ProcTimeMinus(final,inicio_global);
+printf("LN1 is over!\n");
+
+fclose(arq_ROIs);
+
+/* Escrevendo saída para arquivo */
+
+outnet_file = fopen(ARQUIVO_DE_SAIDA,"w");
+if(outnet_file == NULL)
+{
+ printf("Couldn't open outnet file, closing application.\n");
+ getchar();
+ exit(-1);
+}
+
+for(i=0;i<500;i++)
+{
+ j=i%10;
+ for(k=0;k<=3;k++)
+ {
+  fprintf(outnet_file,"%f ",matriz_prob[i][j].outnet[k]);
+ }
+ fprintf(outnet_file,"\n");
+}
+
+fclose(outnet_file);
+
+/* Escrevendo dados de check para arquivo */
+
+check_file = fopen(ARQUIVO_DE_CHECK,"w"); /* overwrite if
+                                           already exists */
+if(check_file == NULL)
+{
+ printf("Couldn't open time file, closing application.\n");
+ getchar();
+ exit(-1);
+}
+
+/* Doing some statistics */
+for(j=0;j<(4*NROIS_MAX);j++)
+{
+ switch(vetor_check[j].tipo)
+ {
+  case 0:
+  case 1:
+  case 2:
+	  chan_trt += vetor_check[j].tempo;
+          break;
+  case 3:
+  case 4:
+  case 5:
+	  chan_pres += vetor_check[j].tempo;
+	  break;
+  case 6:
+  case 7:
+	  chan_calo += vetor_check[j].tempo;
+          break;
+  case 8:
+  case 9:
+	  chan_muon += vetor_check[j].tempo;
+          break;
+ }
+}
+
+chan_tot = chan_calo + chan_trt + chan_pres +
+    chan_muon + wasted; /* Total distribution time */
+fwaste = (float)wasted ;
+facc = (float)acc;
+
+/* Print time file */
+fprintf(check_file," Simulation Approach 03 for level 2 application\n");
+fprintf(check_file," Current Date is %s\n",asctime(time_struct));
+fprintf(check_file," Statistical Info for Time\n");
+fprintf(check_file,"---------------------------\n\n");
+fprintf(check_file,"         Value   |  Time  | %% compared to | %% compared to\n");
+fprintf(check_file,"                 |        | tot.dist.time | tot. app. time\n");
+fprintf(check_file,"-----------------+--------+---------------+---------------\n");
+fprintf(check_file,"%14s   |%7d |%11.2f    |%11.2f\n",
+ "calo",chan_calo,100*(chan_calo/chan_tot),100*(chan_calo/facc));
+fprintf(check_file,"%14s   |%7d |%11.2f    |%11.2f\n",
+ "trt",chan_trt,100*(chan_trt/chan_tot),100*(chan_trt/facc));
+fprintf(check_file,"%14s   |%7d |%11.2f    |%11.2f\n",
+ "pres",chan_pres,100*(chan_pres/chan_tot),100*(chan_pres/facc));
+fprintf(check_file,"%14s   |%7d |%11.2f    |%11.2f\n",
+ "muon",chan_muon,100*(chan_muon/chan_tot),100*(chan_muon/facc));
+fprintf(check_file,"%14s   |%7lu |%11.2f    |%11.2f\n",
+ "wasted",wasted,100*(fwaste/chan_tot),100*(fwaste/facc));
+fprintf(check_file,"%14s   |%7.0f |%11.2f    |%11.2f\n",
+ "used in dist.",chan_tot-wasted,100*((chan_tot-wasted)/chan_tot),
+  100*((chan_tot-wasted)/facc));
+fprintf(check_file,"%14s   |%7.0f |%11.2f    |%11.2f\n",
+ "tot dist.time",chan_tot,100*(chan_tot/chan_tot),
+ 100*(chan_tot/facc));
+fprintf(check_file,"%14s   |%7d |       ----    |%11.2f\n\n",
+ "tot app.time",acc,100*(acc/facc));
+
+fprintf(check_file," Process Organization Map is:\n");
+fprintf(check_file," Node (Dsp) | Process Type \n");
+fprintf(check_file,"------------+--------------\n");
+for(j=0;j<16;j++)
+ {
+  fprintf(check_file,"%6d      | %10s \n",j,proc[j]);
+  fprintf(check_file,"------------+--------------\n");
+ }
+fprintf(check_file,"\n RoI transmission time table follows...\n");
+fprintf(check_file," FEx'or Type Legend: 0-2 TRT, 3-5 
+   SCT(PreShower), 6-7 Calorimeter, 8-9 Muon\n\n");
+fprintf(check_file," Channel | Type | RoI |  Time\n");
+fprintf(check_file,"---------+------+-----+-------\n");
+
+for(j=0;j<(4*NROIS_MAX);j++)
+{
+ fprintf(check_file,"%8d | %4d | %3d | %5d\n",vetor_check[j].canal,
+      vetor_check[j].tipo,vetor_check[j].num,vetor_check[j].tempo);
+ fprintf(check_file,"---------+------+-----+-------\n");
+}
+
+fclose(check_file);
+
+/* End write check */
+
+printf("Final de aplicação, hit enter to finish");
+getchar();
+
+} /* End Main */
+
+
+/* ------------------------- */
+/* Funcoes chamadas por main */
+/* ------------------------- */
+
+void leia_tabela(float *tb)
+{
+
+ /* Declaração de arquivos */
+ FILE *tabela;
+
+ /* Declaração de variáveis */
+ int count;
+ float lixo; /* Valores de x que serão lidos e jogados fora */
+
+ /* Rotina Principal */
+ tabela = fopen(TABELA_PARA_TANH,"r");
+ if(tabela == NULL)
+ {
+  printf("Não consegui abrir tabela de valores para tanh,
+                                 terminando aplicação.\n");
+  exit(-1);
+ }
+ for(count=0;count<=20000;count++)
+             /* Faz um for de 0 a 20000 */
+ {
+  fscanf(tabela,"%f %f",&lixo,(tb+count));  
+ }/* for */
+ fclose(tabela);
+
+}/* leia_tabela */ 
+
+void leia_dumps(struct _hidd_ *hd, struct _outlay_ *ol)
+{
+ /* Arquivos utilizados */
+ FILE *fid;
+
+ /* Variáveis Locais */
+ int count, count2;
+
+ /* Rotina Principal */
+ fid = fopen(ARQUIVO_DE_PESOS,"r");
+ if(fid == NULL)
+ {
+  printf("Não consegui abrir o arquivo de pesos,
+                        terminando aplicação.\n");
+  exit(-1);
+ } /* if */
+
+ /* Lê os dumps da camada escondida */
+
+ for(count=0;count<=11;count++)
+ {
+  for(count2=0;count2<=5;count2++)
+  {
+   fscanf(fid,"%f",&hd[count2].peso[count]);
+  }/* for count2 */
+ }/* for count */
+
+ /* Lê threshold dos neurônios da camada escondida */
+ for(count=0;count<=5;count++)
+ {
+  fscanf(fid,"%f",&hd[count].threshold);
+ }/*for count (2o.) */
+
+ /* Lê os dumps da camada de saída */
+
+ for(count=0;count<=5;count++)
+ {
+  for(count2=0;count2<=3;count2++)
+  {
+   fscanf(fid,"%f",&ol[count2].peso[count]);
+  }/* for count2 (2o.) */
+ }/* for count (3o.) */
+
+ /* Lê threshold dos neurônios da camada de saída */
+ for(count=0;count<=3;count++)
+ {
+  fscanf(fid,"%f",&ol[count].threshold);
+ }/*for count (4o.) */
+}/* leia_pesos */
+
+void leia_norma(float *norm)
+{
+ /* Declaração de arquivos */
+ FILE *fid;
+
+ /* Declaração de variáveis */
+ int count;
+
+ /* Rotina Principal */
+ if((fid=fopen(ARQUIVO_DE_NORMALIZACAO,"r"))==NULL)
+ {
+  printf("Não consegui abrir o arquivo de normalização,
+          terminando aplicação.");
+  getchar();
+  exit(-1);
+ } /* if */
+
+ for(count=1;count<=12;count++)
+ {
+  fscanf(fid,"%f",(norm+count-1));
+ }/* for */
+ fclose(fid);
+}/* leia_norma */
+
+/* a funcao abaixo crias os canais de comunicacao com os slaves */
+static Channel **CreateChannels (Channel *Channels[],
+                                         int ChannelsSize)
+{
+    Channel **CopyChannels = NULL;
+
+    if ((CopyChannels = malloc((ChannelsSize + 1)
+                      * sizeof(Channel *))) == NULL)
+        abort();
+   else
+    {
+        int ChannelsIndex = 0;
+        
+        while (ChannelsIndex++ < ChannelsSize)
+            CopyChannels[ChannelsIndex - 1] =
+                     Channels[ChannelsIndex - 1];
+        
+        CopyChannels[ChannelsSize] = NULL;
+    }
+    return(CopyChannels);
+} /* End CreateChannels */
+
+/* a função abaixo rotaciona os canais, i.e.,
+         reverte a ordem de uma matriz de canais */
+static void RotateChannels (Channel *Channels[],
+                            int ChannelsSize, int Count)
+{
+    while (Count-- > 0)
+    {
+        int ChannelsIndex = 0;
+        
+        Channels[ChannelsSize] =
+           Channels[ChannelsIndex]; /* NULL terminated */
+        
+        while (ChannelsIndex++ < ChannelsSize)
+            Channels[ChannelsIndex - 1] =
+                            Channels[ChannelsIndex];
+        
+        Channels[ChannelsSize] = NULL;
+    }
+}/* End RotateChannels */
+
+static void RearrangeChannels (Channel *Channels[],int ChannelsSize)
+{
+ Channel *ch1, *ch2;
+ RotateChannels(Channels,ChannelsSize,2);
+                  /* Rotates Channels twice */
+
+ /* Change calos and muons, muons last */
+ ch1 = Channels[6];
+ ch2 = Channels[7];
+ Channels[6] = Channels[8];
+ Channels[7] = Channels[9];
+ Channels[8] = ch1;
+ Channels[9] = ch2;
+
+}/* End RearrangeChannels */
+
+void send_data(Channel *In, Channel *Out, int *det_info,
+ int *hold_det_ptr, int *fim_ptr, float *vetor_det,
+ int out_size, int ndet)
+{
+ int hold_det = *hold_det_ptr; /* Passa valor para
+  variável, que pode ser usada com operador de incremento ++ */
+ int fim = *fim_ptr; /* Passa valor para variável,
+  que pode ser usada com operador de incremento ++ */
+
+ if(DirectChanInChar(In) == 'p')
+  /* holds necessary channel - ProcAlt needs it */
+ {
+  DirectChanOut(Out,vetor_det,out_size*sizeof(float));
+  if(++hold_det==NROIS_MAX)
+  {
+   fim++; /* Increments fim indicating end of this data type */
+   det_info[2] = 1;
+  } 
+  if((hold_det>(NROIS_MAX-ndet))&&(hold_det!=NROIS_MAX))
+       det_info[2]=2; /* sets det_info[2] to finish FEx'ors */
+  DirectChanOut(Out,det_info,HEADER_SIZE*sizeof(int));
+  if(++det_info[0]==NO_EVENTOS)det_info[0]=0;
+       /* Reseta posição do evento, se for o caso */
+  if(++det_info[1]==NO_ROIS_per_EV)det_info[1]=0;
+          /* Reseta posição da ROI, se for o caso */
+  if(++det_info[3]==25)det_info[3]=0; /* Numero da RoI */
+ } /* End if */
+ else hold_det++; /* Não deixa de incrementar ponteiro
+        ainda que hold_det > NROIS_MAX, para robustez */
+
+ *hold_det_ptr = hold_det; /* Atualiza valor apontado */
+ *fim_ptr = fim; /* Atualiza valor apontado */
+} /* End send_data */
+\end{verbatim}
+
+\section{Extratores de característica}
+
+\subsection{Calorímetro (\raw{time\_cal.c})}
+\secl{cal}
+\begin{verbatim}
+#include <time.h>
+#include <stdlib.h>
+#include <channel.h>
+#include <process.h>
+#include <misc.h>
+#define Entrada 121
+#define Saida 6
+
+/* a funcao abaixo crias os canais de comunicacao
+   com o master */
+static Channel **CreateChannels (Channel *Channels[],
+                                       int ChannelsSize)
+{
+    Channel **CopyChannels = NULL;
+
+    if ((CopyChannels = malloc((ChannelsSize + 1)
+                          * sizeof(Channel *))) == NULL)
+	abort();
+   else
+    {
+	int ChannelsIndex = 0;
+	
+	while (ChannelsIndex++ < ChannelsSize)
+	    CopyChannels[ChannelsIndex - 1] =
+                      Channels[ChannelsIndex - 1];
+	
+	CopyChannels[ChannelsSize] = NULL;
+    }
+    return(CopyChannels);
+}
+
+int main(void)
+
+{
+ int InputSize = (int) *((long int *) get_param(2));
+ int OutputSize = (int) *((long int *) get_param(4));
+ Channel **Input = CreateChannels(get_param(1), InputSize);
+ Channel **Output = CreateChannels(get_param(3), OutputSize);
+ int Ciclos = (int) *((long int *) get_param(5));
+
+ int fim=0; /* Variavel de controle */
+ float vet_in[Entrada]; /* Numero de entradas do algoritmo */
+ float vet_out[Saida]; /* Numero de saidas do algoritmo */
+ int vet_info[5]; /* vetor com informações do processo,
+                          ev, roi e se é o último ou não */
+
+while(fim < 1) /* Opera até o último dado */
+{
+ DirectChanOutChar(Output[0],'p');
+ DirectChanIn(Input[0],vet_in,sizeof(vet_in));  /* Data in */
+ DirectChanIn(Input[0],vet_info,sizeof(vet_info)); 
+                                             /* Header in */
+ fim = vet_info[2]; /* stop signing to master and ln0 */
+ if(fim == 2) vet_info[2] = 0;
+
+ /* Process data */
+
+ ProcWait(Ciclos);
+
+ /* End Process data */
+
+ /* Begin Send output to LN0 */
+
+ DirectChanOut(Output[1],vet_info,sizeof(vet_info));
+                                 /* Send header to LN1 */
+ DirectChanOut(Output[1],vet_out,sizeof(vet_out));
+                                      /* Send data */
+ 
+ /* End Send output to LN0 */
+
+} /* End while */
+ChanInChar(Input[0]); /* Waits forever */
+} /*end main*/
+\end{verbatim}
+
+\subsection{TRT (\raw{time\_trt.c})}
+A única alteração com relação ao programa da seção~\secr{cal} é:
+\begin{verbatim}
+#define Entrada 100
+#define Saida 2
+\end{verbatim}
+
+\subsection{SCT (\raw{time\_sct.c})}
+A única alteração com relação ao programa da seção~\secr{cal} é:
+\begin{verbatim}
+#define Entrada 100
+#define Saida 3
+\end{verbatim}
+
+\subsection{Múon (\raw{time\_muo.c})}
+A única alteração com relação ao programa da seção~\secr{cal} é:
+\begin{verbatim}
+#define Entrada 10
+#define Saida 1
+\end{verbatim}
+
+\section{Rede Local}
+
+\subsection{LN0 (\raw{ln0.c})}
+\begin{verbatim}
+#include <stdlib.h>
+#include <math.h>
+#include <process.h>
+#include <misc.h>
+
+/* Diretivas define do programa */
+#define NEVENTO_MAX 500
+#define NROI_per_EV_MAX 10
+#define NFEAT 12
+#define HEADER_SIZE 5
+
+/* Define structures usadas por main */
+
+struct _roi_ /* Estruturas para a matriz de dados */
+{
+ float ext_feat[NFEAT];
+ int header[HEADER_SIZE];
+};
+
+/* End structure declaration */
+
+/* Declare prototypes for functions */
+
+static Channel **CreateChannels (Channel *Channels[],
+                                     int ChannelsSize);
+static void RotateChannels (Channel *Channels[],
+                           int ChannelsSize, int Count);
+static void RearrangeChannels (Channel *Channels[],
+                                     int ChannelsSize);
+void recv_data(Channel *In, int *det_info,
+ struct _roi_ mat[NEVENTO_MAX][NROI_per_EV_MAX], int *final_ptr,
+ int in_size, int pos);
+
+/* End prototype declaration */
+
+int main ()
+{
+  /* Begin Channel creation */
+
+  int InputSize = (int) *((long int *) get_param(2));
+  int OutputSize = (int) *((long int *) get_param(4));
+  Channel **Input = CreateChannels(get_param(1), InputSize);
+  Channel **Output = CreateChannels(get_param(3), OutputSize);
+
+  /* Channel *from_ln1 = get_param(5); Not used */
+  Channel *to_ln1 = get_param(6);
+
+  /* End Channel creation */
+
+  int i, j=0, k=0;
+  struct _roi_ matriz[NEVENTO_MAX][NROI_per_EV_MAX];
+  int final=0;
+  int vet_info[HEADER_SIZE];
+  int tipo=0; /* Tipo de processador livre 0,1-Calo, 2,3,4-TRT,
+                 5,6,7-PreS, 8,9-Múon; default é calo */
+  int fex_num=0; /* qual dos canais é o primeiro FEx'or
+                    (ordem inicial), 0 = CALO */
+
+/* End variable declaration */
+
+/* Initialize matriz.header[4] */
+for(i=0;i<NEVENTO_MAX;i++)
+ {
+  for(j=0;j<NROI_per_EV_MAX;j++)
+	 {
+	  matriz[i][j].header[4]=0;
+	 }
+ }
+/* End matriz.headar[4] initialization */
+
+/* New order 3x TRT, 3x SCT, 2x CALOS and 2x MUONS */
+
+RearrangeChannels(Input, InputSize);
+RearrangeChannels(Output, OutputSize);
+
+
+while(final!=4)
+ {
+
+  for(i=k;i<InputSize;i++) /* Sequential receiving */
+  {
+	 switch(i)
+	 {
+	  case 0:
+	  case 1:
+	  case 2: if(final < 1) recv_data(Input[i], vet_info,
+                matriz, &final, 2, 6);  /* TRT */
+                  else k=3;
+                  break;
+	  case 3:
+	  case 4:
+	  case 5: if(final < 2) recv_data(Input[i], vet_info,
+                matriz, &final, 3, 8);  /* SCT */
+         	  else k=6;
+		  break;
+	  case 6:
+	  case 7: if(final < 3) recv_data(Input[i], vet_info,
+                matriz, &final, 6, 0);  /* CAL */
+                  else k=8;
+		  break;
+	  case 8:
+	  case 9: if(final < 4) recv_data(Input[i], vet_info,
+                matriz, &final, 1, 11); /* MU  */
+                  else k=InputSize;
+		  break;
+	 } /* End switch */
+
+	 /* Test if header equals to 4, if yes send data to LN1 */
+    if(matriz[vet_info[0]][vet_info[1]].header[4]==4)
+    {
+     DirectChanOut(to_ln1,vet_info,sizeof(vet_info));
+     DirectChanOut(to_ln1,&matriz[vet_info[0]][vet_info[1]],
+      sizeof(struct _roi_));
+    }/* End data parsing to LN1 */
+
+  }/* End for */
+
+ } /* End while */
+
+} /* End Main */
+
+/* Funções chamadas por main */
+
+/* a funcao abaixo crias os canais de
+   comunicacao com os slaves */
+static Channel **CreateChannels (Channel *Channels[],
+                                       int ChannelsSize)
+{
+    Channel **CopyChannels = NULL;
+
+    if ((CopyChannels = malloc((ChannelsSize + 1)
+                      * sizeof(Channel *))) == NULL)
+        abort();
+   else
+    {
+        int ChannelsIndex = 0;
+        
+        while (ChannelsIndex++ < ChannelsSize)
+            CopyChannels[ChannelsIndex - 1] =
+                      Channels[ChannelsIndex - 1];
+        
+        CopyChannels[ChannelsSize] = NULL;
+    }
+    return(CopyChannels);
+} /* End CreateChannels */
+
+/* a função abaixo rotaciona os canais, i.e.,
+      reverte a ordem de uma matriz de canais */
+static void RotateChannels (Channel *Channels[],
+                      int ChannelsSize, int Count)
+{
+    while (Count-- > 0)
+    {
+        int ChannelsIndex = 0;
+        
+        Channels[ChannelsSize] = Channels[ChannelsIndex];
+                                      /* NULL terminated */
+        
+        while (ChannelsIndex++ < ChannelsSize)
+            Channels[ChannelsIndex - 1] =
+                         Channels[ChannelsIndex];
+        
+        Channels[ChannelsSize] = NULL;
+    }
+}/* End RotateChannels */
+
+static void RearrangeChannels (Channel *Channels[],
+                                     int ChannelsSize)
+{
+ Channel *ch1, *ch2;
+ RotateChannels(Channels,ChannelsSize,2);
+                        /* Rotates Channels twice */
+
+ /* Change calos and muons, muons last */
+ ch1 = Channels[6];
+ ch2 = Channels[7];
+ Channels[6] = Channels[8];
+ Channels[7] = Channels[9];
+ Channels[8] = ch1;
+ Channels[9] = ch2;
+
+}/* End RearrangeChannels */
+
+void recv_data(Channel *In, int *det_info,
+ struct _roi_ mat[NEVENTO_MAX][NROI_per_EV_MAX],
+ int *final_ptr, int in_size, int pos)
+{
+
+ int count;
+ int final = *final_ptr;
+ /* recebe vetor com informações do evento */
+ DirectChanIn(In,det_info,HEADER_SIZE*sizeof(int));
+ /* Recebe 2 valores das RN do TRT */
+ DirectChanIn(In,&mat[det_info[0]][det_info[1]].ext_feat[pos],
+  in_size*sizeof(float));
+ mat[det_info[0]][det_info[1]].header[4]++;
+                   /* Increment feature counter */
+ if(mat[det_info[0]][det_info[1]].header[4]==1)
+                      /* First time, save header */
+ {
+  for(count=0;count<=3;count++)
+  {
+	mat[det_info[0]][det_info[1]].header[count] = det_info[count];
+                                                /* save header */
+  }
+ }
+ final += det_info[2]; /* Acumula que estamos
+                   no final dos dados para TRT */
+ *final_ptr = final;
+
+} /* End recv_data */
+\end{verbatim}
+
+\subsection{LN1 (\raw{ln1.c})}
+\begin{verbatim}
+#include <stdlib.h>
+#include <math.h>
+#include <process.h>
+#include <misc.h>
+
+/* Define directives for this application */
+#define NEVENTO_MAX 500 /* Define maximum
+                            number of RoI's */
+#define NFEAT 12 /* Define number of
+                               features per RoI */
+#define NOUTNET 4 /* Define the number of
+                 outputs from the Global Network */
+#define NROI_per_EV_MAX 10 /* Define maximum
+                       number of RoI's per event */
+#define HEADER_SIZE 5 /* number of fields
+                                on the header */
+#define GDU0 0 /* Channel number to comunicate
+                                 with Global Worker 0 */
+#define NUM_OF_GDW 3 /* Defines the number of Global
+                                      Decision Workers */
+
+/* Define structures used by main */
+
+struct _roi_ /* Data structure for GDW data matrix */
+{
+ float ext_feat[NFEAT];
+ int header[HEADER_SIZE];
+};
+
+struct _on_ /* Data structure for output matrix */
+{
+ float outnet[NOUTNET];
+ int header[HEADER_SIZE];
+};
+
+/* End structure declaration */
+
+/* Define functions used by main application */
+
+static Channel **CreateChannels (Channel *Channels[],
+                                       int ChannelsSize);
+
+/* End define prototypes */
+
+int main()
+{ 
+  /* Begin Channel Declaration */
+  int InputSize = (int) *((long int *) get_param(2));
+                                         /* GD Workers */
+  int OutputSize = (int) *((long int *) get_param(4));
+  Channel **Input = CreateChannels(get_param(1), InputSize);
+  Channel **Output = CreateChannels(get_param(3), OutputSize);
+
+  Channel *from_master = get_param(5);
+  Channel *to_master = get_param(6);
+  Channel *from_ln0 = get_param(7);
+  /* End Channel Declaration */
+
+  /* Begin simple variable declaration */
+
+  int i,j,k, linha=0;
+  int fim=0, inicio=0;
+  int gd[NUM_OF_GDW][HEADER_SIZE]; /* Headers Acumulator */
+  int vet_info[HEADER_SIZE]; /* evento e RoI control matrix */
+  struct _roi_ matriz_dados[NEVENTO_MAX][NROI_per_EV_MAX];
+  struct _on_ matriz_prob[NEVENTO_MAX][NROI_per_EV_MAX];
+  float matriz_real[NEVENTO_MAX][NFEAT]; /* where is going
+                 to be stored valid Global Decision features */
+
+  /* End variable declaration */
+
+
+/* Initializes matriz_prob */
+for(i=0;i<NEVENTO_MAX;i++)
+ {
+  for(j=0;j<NROI_per_EV_MAX;j++)
+    {
+     for(k=0;k<NOUTNET;k++)
+       {
+	matriz_prob[i][j].outnet[k]=10;
+       }
+    }
+ }
+/* End Initializes matriz_prob */
+
+  
+/* Receives valid GD features */
+ChanIn(from_master,matriz_real,sizeof(matriz_real));
+
+i = GDU0; /* resets channel pointer */
+
+/********************/
+/* Begin processing */
+/********************/
+
+while(fim!=1)
+{
+
+ DirectChanIn(from_ln0,vet_info,sizeof(vet_info));
+ DirectChanIn(from_ln0,&matriz_dados[vet_info[0]]
+                    [vet_info[1]],sizeof(struct _roi_));
+
+ fim = vet_info[2]; /* notifies end of simulation */
+
+ /* Substitutes processed data for valid data to GDW */
+ for(j=0;j<NFEAT;j++)
+ {
+  matriz_dados[vet_info[0]][vet_info[1]].ext_feat[j]=
+                                  matriz_real[linha][j];
+ }
+
+ /* Run over and over the same valid features,
+                       variability == NEVENTO_MAX */
+ if(++linha==NEVENTO_MAX) linha=0;
+
+/* Pass data to Global Decision Units */
+ if(inicio < OutputSize) /* first time */
+ {
+  DirectChanOut(Output[inicio],&matriz_dados[vet_info[0]]
+               [vet_info[1]].ext_feat[0],NFEAT*sizeof(float));
+  for(j=0;j < HEADER_SIZE;j++)
+  {
+	gd[inicio][j]=vet_info[j]; /* Holds header according
+                                 to destination processor */
+  }/* end for j */
+
+  inicio++;
+
+ } /* end if inicio */
+
+ else /* Other times */
+ {
+   DirectChanIn(Input[i],&matriz_prob[gd[i][0]][gd[i][1]].
+                      outnet[0],4*sizeof(float)); /* Receive data */
+   DirectChanOut(Output[i],&matriz_dados[vet_info[0]]
+    [vet_info[1]].ext_feat[0],12*sizeof(float)); /* Pass new data */
+
+   /* saves header */
+   for(k=0;k<HEADER_SIZE;k++)
+   {
+    matriz_prob[gd[i][0]][gd[i][1]].header[k]=gd[i][k];
+                     /* Saves header into right position */
+    gd[i][k]=vet_info[k]; /* Holds header according 
+                                to destination processor */
+   }/* end saving header */
+
+   /* relocates i, points to other GDW's */
+   if(++i == OutputSize) i=0;
+
+ }/* End else */
+
+}/* End WHILE */
+
+/* Receives last data */
+
+for(i=0;i < InputSize;i++)
+{
+
+ j = ProcSkipAltList(Input); /* Verifies "InputSize" times
+              if there's a GD worker willing to output data */
+ if(j != -1)
+ {
+  DirectChanIn(Input[j],&matriz_prob[gd[j][0]][gd[j][1]].outnet[0]
+                             ,4*sizeof(float)); /* Receive data */
+  for(k=0;k<HEADER_SIZE;k++)
+  {
+   matriz_prob[gd[j][0]][gd[j][1]].header[k]=gd[j][k];
+                        /* Saves header into right position */
+  }/* End for k */
+ }/* End if j != -1 */
+
+}/* End for i */
+
+/* End of process, have to output results to master
+        application, time counter is ticking there ! */
+DirectChanOut(to_master,matriz_prob,sizeof(matriz_prob));
+
+} /* End Main */
+
+/****************************/
+/* Functions called by main */
+/* ------------------------ */
+/****************************/
+
+/* Creates a vector of channels were the last position
+                          is NULL, for implementation reasons */
+static Channel **CreateChannels (Channel *Channels[],
+                                         int ChannelsSize)
+{
+    Channel **CopyChannels = NULL;
+
+    if ((CopyChannels = malloc((ChannelsSize + 1)
+                          * sizeof(Channel *))) == NULL)
+        abort();
+   else
+    {
+        int ChannelsIndex = 0;
+        
+        while (ChannelsIndex++ < ChannelsSize)
+            CopyChannels[ChannelsIndex - 1] =
+                             Channels[ChannelsIndex - 1];
+        
+        CopyChannels[ChannelsSize] = NULL;
+    }
+    return(CopyChannels);
+} /* End CreateChannels */
+\end{verbatim}
+
+\section{Decisão Global (\raw{global.c})}
+\label{ap:global.c}
+\begin{verbatim}
+#include <stdlib.h>
+#include <math.h>
+#include <process.h>
+#include <misc.h>
+#include <channel.h>
+#include <time.h>
+
+/* Tipos estruturados globais */
+
+struct _hidd_ /* Estruturas para os 
+                neurônios da hidden layer */
+{
+ float threshold;
+ float peso[12];
+ float saida;
+};
+
+struct _outlay_ /* Estruturas para os 
+                neurônios da camada de saída */
+{
+ float threshold;
+ float peso[12];
+ float saida;
+ };
+
+
+
+/* Declaração de protótipos das funções utilizadas
+   na aplicação */
+float ativa(float valor, float *tb, float threshold);
+  /* Função que calcula tanh por look-up */
+float ativa2(float valor, float *tb, float threshold);
+  /* Função que calcula tanh math.h */
+static Channel **CreateChannels(Channel *Channels[],
+                                     int ChannelsSize);
+
+
+/*===============================================*/
+/* Programa Principal                            */
+/*===============================================*/
+
+int main(void)
+{
+ /* Abertura dos canais de main */
+ int InputSize = (int) *((long int *) get_param(2));
+ int OutputSize = (int) *((long int *) get_param(4));
+ Channel **Input = CreateChannels(get_param(1), InputSize);
+ Channel **Output = CreateChannels(get_param(3), OutputSize);
+
+ /* Declaração de variáveis locais a main */
+
+ int i,j,k; /* variáveis de controle */
+ float evento[12]; /* O evento corrente */
+ float normal[12]; /* O vetor de normalização */
+ struct _hidd_ hidd[12]; /* Os neurônios da
+                            camada escondida */
+ struct _outlay_ outlay[4]; /* Os neurônios da
+                               camada de saída */
+ float tab[20001]; /* A tabela de valores para tanh */
+ float out_vect[4];
+ int fim=0; /* Testa fim da rotina */
+
+ /* Carrega tabela com valores das
+    tangentes hiperbólicas */
+ ChanIn(Input[0],tab,sizeof(tab));
+
+ /* Carrega valores de normalização */
+ ChanIn(Input[0],normal,sizeof(normal));
+
+ /* Carrega pesos */
+ ChanIn(Input[0],hidd,sizeof(hidd));
+ ChanIn(Input[0],outlay,sizeof(outlay));
+
+while(fim!=1)
+{
+
+ /* Lê evento atual */
+ DirectChanIn(Input[1],evento,sizeof(evento));
+ 
+ /* Normaliza o evento */
+ for(k=0;k<=11;k++)
+ {
+  evento[k] /= normal[k];
+ } /* for var k */
+
+
+/* Processamento Neuronal do evento */
+
+/* Processamento dos Perceptrons ou Neurônios
+   da camada de entrada */
+/* Não existe processamento aqui, pelo menos por enquanto. */
+
+
+/* Processamento da Hidden Layer ou
+   Neurônios da camada escondida */
+  for(i=0;i<=5;i++)
+  {
+   /*variáveis locais a este for (var i) */
+   float soma=0;
+
+   for(j=0;j<=11;j++)
+   {
+    /* Realiza a soma dos produtos internos da saída
+                    da camada de entrada com os pesos */
+    soma+=(evento[j]*hidd[i].peso[j]);      
+
+   }/* for var j (2) */
+
+   /* Passa pela função de ativação */
+   hidd[i].saida=ativa(soma, tab, hidd[i].threshold);
+
+  }/* end for var i (2) - Camada escondida */
+
+  /* Processamento da Output Layer ou
+      Neurônios da camada de saída */
+  for(i=0;i<=3;i++)
+  {
+   /*variáveis locais a este for (var i) */
+   float soma=0;
+
+   for(j=0;j<=5;j++)
+   {
+    /* Realiza a soma dos produtos internos
+      da saída da camada escondida com os pesos */
+    soma+=(hidd[j].saida*outlay[i].peso[j]);  
+
+   }/* for var j (3) */
+
+   /* Passa pela função de ativação 'ativa' */
+   outlay[i].saida=ativa(soma, tab,
+                   outlay[i].threshold);
+
+  }/* for var i (3) */
+
+ /* Coloca saída num vetor */
+ for(i=0;i<=3;i++)
+ {
+ out_vect[i]=outlay[i].saida;
+ }
+
+ /* Externaliza saída */
+ DirectChanOut(Output[1],out_vect,sizeof(out_vect));
+
+}/* End while , reseta processo */
+
+}/*End Main */
+
+/*===============================================*/
+/* Funções chamadas pela rotina main             */
+/*===============================================*/
+
+float ativa(float valor, float *tb, float threshold)
+
+{
+ /* Soma threshold do neurônio */
+ valor+=threshold;
+
+ /* Testa se valor é negativo */
+ if( valor <= 0 ) /* 0 */
+ {
+  /* Caso seja, retorna o -1 para valor<-10
+     ou indexa a matriz tb segundo uma álgebra para
+     identificação da binagem do histograma */
+  if ( valor <= -10 ) /* 1 */
+  {
+   return -1.0;
+  }/* then 1 */
+  else
+  {
+   /* Acha a parte inteira da expressão à direita,
+      em outras, trunca na terceira casa decimal
+      (estou multiplicando por 1000) "valor" */
+   int indice = 1000*valor+10000;
+   return(*(tb+indice));   
+  }/* else 1 */
+
+ }/* then 0 */
+ else
+ {
+  /* Caso não, retorna o 1 para valor>10
+     ou indexa a matriz tb segundo uma álgebra para
+     identificação da binagem do histograma */
+  if ( valor > 10 ) /* 2 */
+  {
+   return 1.0;
+  }/* then 2 */
+  else
+  {
+   /* Acha a parte inteira da expressão à
+      direita, em outras, trunca na terceira casa decimal
+      (estou multiplicando por -1000) "valor" */
+   int indice = 1000*valor+10000;
+   return(*(tb+indice));
+  }/* else 2 */
+
+ }/* else 0 */
+}/* Função ativa */
+
+static Channel **CreateChannels (Channel *Channels[],
+                                      int ChannelsSize)
+{
+    Channel **CopyChannels = NULL;
+
+    if ((CopyChannels = malloc((ChannelsSize + 1)]
+                          * sizeof(Channel *))) == NULL)
+        abort();
+   else
+    {
+        int ChannelsIndex = 0;
+        
+        while (ChannelsIndex++ < ChannelsSize)
+            CopyChannels[ChannelsIndex - 1] =
+                           Channels[ChannelsIndex - 1];
+        
+        CopyChannels[ChannelsSize] = NULL;
+    }
+    return(CopyChannels);
+} /* End CreateChannels */
+\end{verbatim}
+

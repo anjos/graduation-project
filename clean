@@ -1,0 +1,2 @@
+rm -f *.dvi *.aux *.lo* *.toc *~ *.blg *.bbl
+

@@ -1,0 +1,142 @@
+\chapter{Discussões}
+\label{chap:discuss}
+
+Este capítulo é dedicado à discussão sobre possíveis extensões deste trabalho. 
+Estaremos expondo aqui algumas das características ainda não exploradas no 
+equipamento disponível TN310, partes não incluídas na aplicação e possibilidades de 
+emulação e expansão da aplicação.
+
+\section{Usando os DSP-s \eng{on-board}}
+
+Esgotamos quase todos os recursos que nos levariam à otimização das 
+rotinas de execução do sistema de validação. Maximizamos o processo de 
+comunicação entre as tarefas de forma lógica e coerente e entendemos as diversas 
+facetas e mecanismos de operação da TN310, aplicando estes recursos na redução do 
+tempo de execução de nossa aplicação. 
+
+Dentre os recursos não utilizados estão os DSP-s embutidos em cada nó de 
+processamento HTRAM. Estes DSP-s atuam como velocíssimos coprocessadores 
+matemáticos e somente têm acesso ao mundo exterior graças a uma mémoria que 
+compartilham com o \eng{transputer} (T9000) da HTRAM.
+
+DSP-s, como processadores matemáticos, podem ser utilizados de 2 formas em nossa 
+aplicação: a primeira, fazendo com que todo o processamento matemático seja 
+deslocado para estas unidades e, desta forma, reduzindo o tempo de processamento 
+final; a segunda, utilizando os DSP-s como nós de processamento central de nossas 
+tarefas, de tal forma que o tempo de execução de cada tarefa seja o mínimo possível.
+
+A segunda forma de aplicação parece inviável, pois estaríamos tentando realocar o 
+centro de processamento de uma HTRAM do \eng{transputer} para o DSP. Pagaríamos então o 
+preço por realocar tais atividades em um nó secundário, que se comunica através de 
+outro nó ao meio exterior, aumentando o tempo de comunicação. Por outro lado, a 
+implementação das tarefas no DSP teria que ser feita em \eng{assembly} pois não existem 
+rotinas de fluxo para tal processador como é descrito no 
+manual \cite{telmat:dsp_usrman}\footnote{Em verdade, não há nem referências de como 
+implantar um código assembly no DSP. Suspeitamos de que o uso do DSP esteja restrito 
+ao uso como coprocessador, mas nunca como processador.}.
+
+A primeira forma de utilização do DSP é a mais coerente. Nesta abordagem, tentaríamos
+utilizar as bibliotecas disponíveis para o coprocessamento via DSP para dimunuir
+o tempo de processameto nas unidades que demandam grande quantidade de operações 
+matemáticas, como é o caso das unidades de decisão global. Coprocessamento significa
+processar de forma auxiliar; isto implica que o nó de processamento central 
+permaneceria como tal, ainda que operações matemáticas que demandassem alta velocidade 
+fossem realocadas no DSP.
+
+A primeira abordagem poderia utilizar as bibliotecas descritas no 
+manual (\cite{telmat:dsp_usrman}) para que o processamento matemático fosse deslocado
+do \eng{transputer} para o DSP, dificultando menos a implantação do coprocessamento. Esta 
+poderia ser considerado como mais uma forma de paralelização de nossa aplicação.
+
+A redução no tempo de processamento de cada unidade de decisão global, provocada 
+pela utilização do DSP, irá reduzir o \eng{speed-up} máximo da aplicação
+visto que estaremos agilizando o processamento sequencial ainda que o processamento
+distribuído não seja beneficiado pois estaremos presos na questão da distribuição de 
+dados como visto na seção~\secr{max_min}. Veja que o \eng{speed-up} é exatamente o 
+tempo de processamento em um único nó (que irá reduzir) dividido pelo tempo de 
+transmissão de 3 pacotes (2 indo para o escravo e 1 voltando a cada vez). Este 
+último não reduzirá pois é inerente ao sistema, o primeiro, no entanto, deve reduzir
+com o uso dos DSP-s \eng{on-board} para realizar o co-processamento matemático do 
+sistema, reduzindo, assim, o \eng{speed-up}.
+
+\section{Fundindo aplicações e aumentando o número de processos por nó}
+
+Uma outra forma de tentarmos aumentar/otimizar a execução de tarefas pode vir pela 
+maximização do processamento em cada nó. O arquivo de configuração exibido no 
+apêndice~\ref{ap:simulation} nos mostra que, no caso dos extratores de 
+característica,
+apenas uma pequena parcela da memória total de cada nó dedicado a esta atividade 
+está sendo utilizado (entre \eng{stack}, \eng{heap}, código e área estática o 
+programa deve  
+ocupar cerca de 50 Kilobytes de um total de 8 Megabytes disponíveis). É possível, 
+então,
+que coloquemos tantas instâncias quantas forem possíveis de cada tipo de extrator 
+em um nó, maximizando a utilização de tal nó.
+
+Isto nos faz perceber 2 pontos distintos na execução de tal abordagem:
+\begin{enumerate} 
+ \item Com o aumento de tarefas rodando paralelamente, teremos uma possível 
+diminuição do tempo de processamento global;
+ \item Pagaremos por este aumento, pois o número de DS-Links por nó é fixo; um maior 
+número de extratores (ou unidades de decisão global) por nó implica uma maximização 
+tão intensa no uso dos canais que atingiremos rapidamente a saturação.
+\end{enumerate}
+
+Em outras palavras, a distribuição de dados é \underline{necessária}; não podemos, 
+em nenhuma configuração, deixar de fazê-la. Isto implica 
+que, uma vez que estamos próximos da otimização máxima do uso de canais\footnote{Esta
+discussão concerne ao uso de canais reais, os DS-Links.}  para para vários das
+subtarefas, entre elas o supervisor (alto fluxo de dados), os extratores para 
+calorímetro (16 pacotes por vez), SCT (14 pacotes por vez) e TRT (14 pacotes por 
+vez), 
+esta mudança somente atingiria de forma significativa os extratores de múons e as 
+unidades decisão global. Como vimos, isto não representará uma alteração 
+significativa do tempo de processamento global.
+
+Uma outra possbilidade de otimização viria da fusão de algumas das tarefas da 
+aplicação, aumentando o uso de cada nó e, ao mesmo tempo, aumentando o número de processadores 
+disponíveis para processos mais lentos. Esta otimização poderia, por exemplo, ser 
+realizada com a fusão do processo supervisor e das redes locais em um único 
+processador. As diversas tarefas contituiriam parte de uma única tarefa que 
+dispararia processos concorrentes (usando \eng{time-sharing}) no mesmo processador. 
+Isto mostrar-se-ia interessante, neste caso, pois o volume de dados transportados pelas
+redes locais\footnote{Um enfoque de fusão apenas das 2 redes locais (LN1 e LN0) 
+também parece viável.} é diminuto e estaríamos eliminando a necessidade de 
+comunicarmos os dados da rede local ao supervisor quando o processamento acabasse.
+
+\section{Anexando processos}
+
+Como trabalhos de extensão sugerimos a anexação das diversas fases de processamento 
+que foram retiradas deste trabalho. Entre elas, podemos destacar o pré-processamento 
+de Regiões de Interesse, a complementação da unidade de decisões globais e a adição 
+de alguns extratores de característica reais.
+
+O pré-processamento, como já descrito na seção~\secr{preproc}, constitui-se da parte
+do algoritmo de segundo nível responsável pela simplificação dos dados a serem 
+processados pelos extratores de característica. Esta unidade, embora seja modelada 
+pela arquitetura B com diferentes tipos de processadores, formando um \eng{pipe}, 
+pode ser implementada, por motivos de emulação, no sistema como um todo, aumentando a 
+sua complexidade e fazendo com que possamos estimar de melhor forma o desempenho do 
+sistema TN310 na execução da atividade de validação. O mesmo podemos dizer quanto 
+aos extratores de característica.
+
+A implementação da segunda fase de decisão global no processo final também parece 
+ser um bom trabalho de continuação. Neste, teremos que dimensionar uma rede que 
+possa 
+receber até 100 entradas distintas para que determine o canal físico que representa 
+um evento. Estas 100 entradas são resultado de cada evento possuir um máximo de 25 
+RoI-s; assim, se temos 4 saídas para cada RoI, um máximo de 100 entradas será 
+suficiente para analisarmos qualquer evento. A rede em questão deverá ser 
+dimensionada de forma a satisfazer o espaço de variáveis a que se destina, isto é, 
+deverá possuir tantas saídas quantos foram os canais físicos a serem identificados.
+
+O número de neurônios na camada intermediária estará diretamente relacionado com a 
+linearidade do espaço de dados como discutido em seções anteriores. A rede deverá 
+ser capaz de distinguir eventos com diferentes números de RoI-s.
+
+A fase de treinamento pode ser realizada utilizando-se o JETNET, e a implementação 
+no sistema TN310 deve seguir a implementação da rede para a identificação de 
+partículas, usando, preferencialmente, as funções de ativação já construídas para 
+esta aplicação (figura~\figr{lut_ex}).
+
+

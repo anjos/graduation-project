@@ -1,0 +1,133 @@
+%% Avisa usuario sobre pacotes e versao do LaTeX, nao retire!!!
+\typeout{AVISO: ESTE FONTE FOI DESENVOLVIDO UTILIZANDO LaTeX2E!!}
+\typeout{PACOTES: ARTICLE, BABEL[english,portuguese], INPUTENC(latin1), GRAPHICX}
+\typeout{SEM TAIS PACOTES INSTALADOS O FONTE NAO SERA COMPILADO DIREITO!!!}
+\typeout{Produzido por Andre Rabello dos Anjos em Setembro de 1997.}
+                                                                                                   
+\documentclass[a4paper,titlepage]{report} %% report style(class). Also sets for A4 paper type.
+
+\usepackage[latin1]{inputenc} %% holds ascii as accented chars
+\usepackage[english,brazil]{babel} %% sets portuguese as native
+\usepackage[final]{graphicx} %% new graphics package
+\usepackage{emlines2} %% for pictures
+\usepackage{html}
+\usepackage{pictex}
+%% \usepackage{layout} %% Only for showing the page layout
+
+%% Title and Author
+\title{Sistema de Classificação Baseado em uma Máquina com Processamento Distribuído}
+\author{André Rabello dos Anjos}
+
+%% All layout definitions
+%begin{latexonly}
+\input{lay_def}
+%end{latexonly}
+
+%% compile only listed files
+\begin{latexonly}
+\includeonly{abstract, intro, literal, ftmm, appendix/ndl, appendix/cfs, 
+appendix/makefile, project, appendix/global1, appendix/globaln, appendix/sim, 
+results, discuss} 
+\end{latexonly}
+
+%% Writes index file
+%% \makeindex
+
+%% Begins document
+\begin{document}
+
+%% All command definitions
+\input{com_def}
+
+%% HTML background = white
+\bodytext{bgcolor=white}
+
+%% Shows defined layout
+%% \layout
+
+\begin{latexonly}
+%% Makes title page
+{\LARGE 
+\begin{center}
+UNIVERSIDADE FEDERAL DO RIO DE JANEIRO
+\vskip 0.75cm
+ESCOLA DE ENGENHARIA
+\vskip 0.75cm
+DEPARTAMENTO DE ELETRÔNICA
+\vskip 1.5cm
+{\bf Sistema de Classificação Baseado em uma Máquina com processamento distribuído}
+\vskip 2.0cm
+\hrule
+\vskip 3.0mm
+Autor: André Rabello dos Anjos
+\vskip 2.0cm
+\hrule
+\vskip 3.0mm
+Orientador: Prof. José Manoel de Seixas
+\vskip 2.0cm
+\hrule
+\vskip 3.0mm
+Examinadora: Prof$^{\underline{a}.}$ Marta Mattoso
+\vskip 2.0cm
+\hrule
+\vskip 3.0mm
+Examinador: Prof. Luiz Wagner Pereira Biscainho
+\vskip 2.0cm
+DEL 
+
+Setembro de 1997
+\end{center}
+}
+
+%% Introduces the project
+\include{abstract}
+
+\maketitle
+\end{latexonly}
+
+\begin{htmlonly}
+\maketitle
+\include{abstract}
+\clearpage
+\end{htmlonly}
+
+%% Makes table of contents
+\tableofcontents
+
+%% Makes list of figures
+\clearpage
+\listoffigures
+
+%% Makes list of tables
+\clearpage
+\listoftables
+
+%% Introduces the project
+\clearpage
+\include{abstract}
+
+%% Introduction
+\include{intro} %% Whole introduction
+\include{literal} %% Documentation Revision
+\include{ftmm} %% Theoretical Fundaments, Methods and Materials used at this project
+\include{project} %% Project implementation and constraints at TN310
+\include{results} %% Results and conclusions
+\include{discuss} %% Discussions about possible extensions for this work
+
+%% Makes bibliographic list
+\bibliography{biblio}
+\bibliographystyle{unsrt}
+
+%% The Appendix
+\appendix
+\include{appendix/ndl} %% NDL file example
+\include{appendix/cfs} %% CFS file example
+\include{appendix/makefile} %% Makefile example
+\include{appendix/global1} %% Global Decision, 1 node - global1.c
+\include{appendix/globaln} %% Global Decision, 16 nodes - supervisor
+\include{appendix/sim} %% Simulation programs for level 2
+
+%% Adds makeindx entries
+%% \input{main.ind}
+
+\end{document}

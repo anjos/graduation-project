@@ -1,0 +1,419 @@
+\chapter{O supervisor para GDU rodando em 16 processadores}
+\label{ap:sup_global}
+
+Este apêndice é dedicado à comentários sobre o programa supervisor, partes que já 
+foram apresentadas como a de leitura de arquivos e inicialização de 
+variáveis(apêndice~\ref{ap:global1}) não serão discutidos com tanta ênfase como é o 
+caso das partes novos, principalmente inerentes à comunicação. Além dos comentários 
+no programa(\raw{em letras de máquina}) será constante a inserção de texto comum 
+para destacarmos o funcionamento de alguns pontos.
+
+Inicialmente podemos perceber a inserção de 2 novas bibliotecas: process.h e 
+channel.h, por razões óbvias.
+\begin{verbatim}
+/* Supervisor para a rede de decisão global */
+#include <stdio.h>
+#include <stdlib.h>
+#include <process.h>
+#include <misc.h>
+#include <time.h>
+#include <channel.h>
+
+/*===============================================================*/
+/* Diretivas DEFINE do programa, incluindo nomes e constantes    */
+/*===============================================================*/
+
+#define NUMERO_DE_EVENTOS 3238
+#define ARQUIVO_DE_EVENTOS "..\\seq\\tst_resu\\2e2j\\input.txt"
+#define ARQUIVO_DE_PESOS "..\\seq\\tst_resu\\2e2j\\dump.txt"
+#define TABELA_PARA_TANH "..\\seq\\tanh.txt"
+#define ARQUIVO_DE_NORMALIZACAO "..\\seq\\tst_resu\\2e2j\\normal.txt"
+#define ARQUIVO_DE_SAIDA ".\\teste.txt"
+
+/* Tipos estruturados globais */
+struct _hidd_ /* Estruturas para os neurônios da hidden layer */
+{
+ float threshold;
+ float peso[12];
+ float saida;
+};
+
+struct _outlay_ /* Estruturas para os neurônios da camada de saída */
+{
+ float threshold;
+ float peso[12];
+ float saida;
+ };
+
+
+/* Declaração de protótipos das funções utilizadas na aplicação */
+void leia_tabela(float *tb);
+void leia_dumps(struct _hidd_ *hd, struct _outlay_ *ol);
+void leia_norma(float *norm);
+\end{verbatim}
+
+A função declarada a seguir, \raw{CreateChannels()}, é uma função especial para a 
+manipulação de um conjunto de canais declarados no arquivo CFS. Ela tem como entrada
+o endereço inicial de um vetor de canais e como saída um vetor de canais válidos no 
+programa, i.e., ela declara vetores de canais criados no arquivo CFS. Isto indica 
+que esta função é um ponteiro(outra notação para vetores em C) de ponteiros(os 
+próprios canais). Uma peculiaridade é que o vetor que esta função retorna tem sua 
+última posição apontando para \raw{NULL}. Isto se deve à fatores de implementação de
+outras funções e inerente ao próprio InMOS C.
+
+O atributo \raw{static} somente serve para alocar a função em uma área especial da 
+memória, não ocupando área de \raw{stack}.
+
+\begin{verbatim}
+static Channel **CreateChannels (Channel *Channels[], int ChannelsSize);
+
+/*==================================*/
+/* Programa Principal               */
+/*==================================*/
+
+int main()
+{
+
+/* *********************************** */
+
+/* ----------------------------- */
+/* Begin Declaração de variáveis */
+/* ----------------------------- */
+\end{verbatim}
+
+\paragraph{A criação dos canais.} É feita utilizando-se dos parâmetros cedidos pelo 
+arquivo CFS. A função \raw{CreateChannels} pode ser vista aqui sendo utilizada em 
+sua plenitude.
+
+\begin{verbatim}
+ /* Criação dos canais */
+  
+ int InputSize = (int) *((long int *)get_param(4));
+ int OutputSize = (int) *((long int *)get_param(6));
+ Channel **Input = CreateChannels(get_param(3),InputSize);
+ Channel **Output = CreateChannels(get_param(5),OutputSize);
+
+ /* Arquivos utilizados por main */
+ FILE *outnet, *fevento;
+
+ /* Declaraçao de constantes utilizadas por main */
+
+ const int NEVENTOS = NUMERO_DE_EVENTOS ; 
+         /* O número de eventos a serem analisados */
+
+ /* Declaração de variáveis locais a main */
+
+ int a,i,j,k,l,m; /* variáveis de controle */
+ float evento[NUMERO_DE_EVENTOS][12]; /* Todos os eventos */
+ float saida[NUMERO_DE_EVENTOS][4]; /* Todas as saídas */
+ float normal[12]; /* O vetor de normalização */
+ struct _hidd_ hidd[12]; /* Os neurônios da camada escondida */
+ struct _outlay_ outlay[4]; /* Os neurônios da camada de saída */
+ float tab[20001]; /* A tabela de valores para tanh */
+ clock_t inicio, fim; /* variável de controle para o tempo do 
+                              evento atual , em pulsos de clock */
+ float acc = 0;
+ float tempo = 0; /* Acumulador para o tempo, em segundos */
+
+ printf("<globalm.c> Começando Global Decision Network,
+                                  aguarde carregamento...\n");
+ printf("<globalm.c> \t\t<<<<<Particle identification >>>>>\n");
+
+ /* Lê tabela com valores das tangentes hiperbólicas */
+ leia_tabela(tab);
+ printf("<globalm.c> Li tabela.\n\n");
+
+ /* Lê arquivos de pesos */
+ leia_dumps(hidd,outlay);
+ printf("<globalm.c> Li pesos.\n\n");
+
+ /* Lê o arquivo com os valores de normalização */
+ leia_norma(normal);
+ printf("<globalm.c> Li normalização.\n\n");
+
+ /* Lê o arquivo com as ROI's */
+ fevento=fopen(ARQUIVO_DE_EVENTOS,"r");
+ if (fevento==NULL)
+ { 
+   printf("\n Arquivo de entrada vazio!!!\n");
+   abort();
+ }
+
+ for(k=0;k<=NEVENTOS-1;k++)
+   {
+    for(i=0;i<=11;i++)
+     {
+       fscanf(fevento,"%f",&evento[k][i]);
+     }
+   }
+
+ printf("<globalm.c> Abrindo arquivo de saída...\n");
+ /* Abre o arquivo de saída e verifica sua integridade */
+ if((outnet=fopen(ARQUIVO_DE_SAIDA,"a"))==NULL)
+ {
+  puts("<globalm.c> O arquivo de saída não foi aberto,
+                                   terminando aplicação...\n");
+  getchar();
+  exit(-1);
+ }
+ printf("<globalm.c> Arquivo de saída ok, começando
+                                   processamento global...\n\n");
+\end{verbatim}
+
+Começa o processamento em si, inicialmente configura os escravos, distribui pesos, 
+tabelas etc.
+
+\begin{verbatim}
+ /* Envia dados de processamento para os slaves */
+ /* ------------------------------------------- */
+
+ printf("<globalm.c> Dados enviados para slaves:\n");
+ for(i=0;i<=OutputSize-1;i++)
+ {
+  ChanOut(Output[i],tab,sizeof(tab)); 
+ /* Tabela com tanh */
+  ChanOut(Output[i],normal,sizeof(normal));
+ /* Vetor de normalizacao */
+  ChanOut(Output[i],hidd,sizeof(hidd));
+ /* Neuronios da camada escondida */
+  ChanOut(Output[i],outlay,sizeof(outlay));
+ /* Neuronios da camada de saida */
+  printf("Slaves carregados!\n");
+ }/* end for(i) */
+ printf("\n");
+
+/* Fim do envio de dados para Global Decision Network */
+/* -------------------------------------------------- */
+/* Global Network pronta */
+printf("Todas as Global Networks(slaves) estão carregadas,
+                              prosseguir ? Pressione Enter.");
+getchar();
+\end{verbatim}
+
+Começa o processamento real, isto é, a processar RoI-s, a inicialização deve ser 
+feita, todos os slaves estão disponíveis agora. Embora estejamos utilizando 
+distribuição sequencial de eventos(sem ser sob-demanda) esta inicialização não é 
+necessária ainda que a mantemos para não reduzir a flexibilidade do programa.
+
+\begin{verbatim}
+/* Passa dados novos para slaves, 
+      sem confirmação pois são os primeiros 15 */
+
+ inicio=clock(); /* inicia contagem de tempo */
+ for(a=0;a<=14;a++)
+ {
+  ChanOut(Output[a],evento[a],12*sizeof(float));
+ }/* end for a */
+\end{verbatim}
+
+Começa um \eng{loop} até que o número pré-determinado de eventos se acabe. Repare 
+que antes de passar dados novos o supervisor recolhe os antigos e os deposita numa 
+matriz, na posição correta.
+
+\begin{verbatim}
+ i=0;
+ for(a=15; a <= NEVENTOS-1; a++)
+ {
+  ChanIn(Input[i],saida[a-15],4*sizeof(float));
+                                  /* Recebe saída */
+  ChanOut(Output[i],evento[a],12*sizeof(float));
+                            /* Passa nova entrada */
+  i++;
+  if(i==15)
+  {
+   i=0;
+  }
+ }/* End for a */
+\end{verbatim}
+
+As últimas saídas recebem processamento diferenciado já que o supervisor não mais 
+passará dados novos. Ininterruptamente usamos a variável ``\raw{i}'' que já foi 
+ajustada para o último processador que recebeu uma RoI.
+
+\begin{verbatim}
+ /* Recebe as últimas saídas */
+ for(a=0;a<=14;a++)
+ {
+  ChanIn(Input[i],saida[NEVENTOS-15+a],4*sizeof(float));
+                                        /* Recebe saída */
+  i++;
+  if(i==15)
+  {
+   i=0;
+  }
+ }
+
+ fim=clock(); /* finaliza tempo */
+ acc=(float)(fim-inicio); /* acumula tempo */
+ tempo=(float)(acc/1.0e6); /* Converte para segundos */
+
+ /* End of application, writing outnet to a file */
+ printf("<globalm.c> Acabei aplicação,
+       escrevendo saída para arquivo...\n");
+ for(i=0;i<=NEVENTOS-1;i++)
+ {
+  for(j=0;j<=3;j++)
+  {
+   fprintf(outnet,"%1.10f ",saida[i][j]);
+  }
+  fprintf(outnet,"\n");
+ }
+\end{verbatim}
+
+Imprime o tempo total de aplicação, podemos calcular o \eng{speed-up} com ele. 
+Finaliza.
+
+\begin{verbatim}
+ /* Imprime tempo total de aplicaçao */
+ printf("<globalm.c> Tempo de aplicação = %e",tempo);
+ fclose(fevento);
+ fclose(outnet);
+ getchar();
+
+}/* End Main */
+
+/*===============================================*/
+/* Funções chamadas pela rotina main             */
+/*===============================================*/
+
+void leia_tabela(float *tb)
+{
+ /* lê toda tabela */
+
+ /* Declaração de arquivos */
+ FILE *tabela;
+
+ /* Declaração de variáveis */
+ int count;
+ float lixo; /* Valores de x que serão lidos e jogados fora */
+
+ /* Rotina Principal */
+ tabela = fopen(TABELA_PARA_TANH,"r");
+ if(tabela == NULL)
+ {
+  printf("<globalm.c> Não consegui abrir tabela de
+             valores para tanh, terminando aplicação.\n");
+  exit(-1);
+ }
+ for(count=0;count<=20000;count++) /* Faz um for de 0 a 20000 */
+ {
+  fscanf(tabela,"%f %f",&lixo,(tb+count));  
+ }/* for */
+ fclose(tabela);
+}/* leia_tabela */ 
+
+void leia_dumps(struct _hidd_ *hd, struct _outlay_ *ol)
+{
+ /* Arquivos utilizados */
+ FILE *fid;
+
+ /* Variáveis Locais */
+ int count, count2;
+
+ /* Rotina Principal */
+ fid = fopen(ARQUIVO_DE_PESOS,"r");
+ if(fid == NULL) /* A flexibilização do programa incluirá
+		     a possibilidade de fornecer o nome do
+		     arquivo de pesos na chamada do programa. */
+ {
+  printf("<globalm.c> Não consegui abrir o arquivo de pesos,
+                                     terminando aplicação.\n");
+  exit(-1);
+ } /* if */
+
+ /* Lê os dumps da camada escondida */
+ for(count=0;count<=11;count++)
+ {
+  for(count2=0;count2<=5;count2++)
+  {
+   fscanf(fid,"%f",&hd[count2].peso[count]);
+  }/* for count2 */
+ }/* for count */
+
+ /* Lê threshold dos neurônios da camada escondida */
+ for(count=0;count<=5;count++)
+ {
+  fscanf(fid,"%f",&hd[count].threshold);
+ }/*for count (2o.) */
+
+ /* Lê os dumps da camada de saída */
+ for(count=0;count<=5;count++)
+ {
+  for(count2=0;count2<=3;count2++)
+  {
+   fscanf(fid,"%f",&ol[count2].peso[count]);
+  }/* for count2 (2o.) */
+ }/* for count (3o.) */
+
+ /* Lê threshold dos neurônios da camada de saída */
+ for(count=0;count<=3;count++)
+ {
+  fscanf(fid,"%f",&ol[count].threshold);
+ }/*for count (4o.) */
+}/* leia_pesos */
+
+void leia_norma(float *norm)
+{
+ /* Declaração de arquivos */
+ FILE *fid;
+
+ /* Declaração de variáveis */
+ int count;
+
+ /* Rotina Principal */
+ if((fid=fopen(ARQUIVO_DE_NORMALIZACAO,"r"))==NULL)
+ {
+  printf("Não consegui abrir o arquivo de normalização,
+                                  terminando aplicação.");
+  getchar();
+  exit(-1);
+ } /* if */
+
+ for(count=1;count<=12;count++)
+ {
+ fscanf(fid,"%f",(norm+count-1));
+ }/* for */
+ fclose(fid);
+}/* leia_norma */
+
+/* a funcao abaixo crias os canais de
+                comunicacao com os slaves */
+\end{verbatim}
+
+A função a seguir cria um vetor de canais baseado em um endereço, cedido pelo 
+arquivo CFS através de \raw{get\_param()} e um inteiro indicando qual é o número de 
+posições que terá este vetor.
+
+\begin{verbatim}
+static Channel **CreateChannels (Channel *Channels[],
+                                        int ChannelsSize)
+{
+    /* Cria um ponteiro duplo que aponta para NULL */
+    Channel **CopyChannels = NULL;
+
+   /* Aloca espaço de ambiente para n+1 canais
+      transformando o ponteiro duplo em um vetor de 
+      ponteiros, que é a mesma coisa, só que agora
+                            existe espaço disponível */
+   if ((CopyChannels = malloc((ChannelsSize + 1)
+                      * sizeof(Channel *))) == NULL)
+	abort();
+   else
+    {
+	int ChannelsIndex = 0;
+	
+   /* Atribui a cada posição do vetor de
+       canais um dos canais criados no arquivo CFS */
+
+	while (ChannelsIndex++ < ChannelsSize)
+	    CopyChannels[ChannelsIndex - 1] 
+               = Channels[ChannelsIndex - 1];
+	
+	 /* Atribui NULL à última posição */
+    CopyChannels[ChannelsSize] = NULL;
+    }
+    /* Retorna para a função chamadora, o novo vetor */
+    return(CopyChannels);
+}/* End CreateChannels */
+\end{verbatim}
+

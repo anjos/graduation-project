@@ -1,0 +1,97 @@
+This is emTeX (tex386), Version 3.14159 [4b] (preloaded format=latex 97.3.14)  25 AUG 1997 16:30
+**&latex main
+(../main.tex
+LaTeX2e <1996/12/01> patch level 1
+Babel <v3.6h> and hyphenation patterns for american, english, french, portugues
+e, loaded.
+AVISO: ESTE FONTE FOI DESENVOLVIDO UTILIZANDO LaTeX2E!!
+PACOTES: ARTICLE, BABEL[english,portuguese], INPUTENC(latin1), GRAPHICX
+SEM TAIS PACOTES INSTALADOS O FONTE NAO SERA COMPILADO DIREITO!!!
+Produzido por Andre Rabello dos Anjos em Agosto de 1997.
+(c:/emtex/texinput/latex2e/report.cls
+Document Class: report 1996/10/31 v1.3u Standard LaTeX document class
+(c:/emtex/texinput/latex2e/size10.clo
+File: size10.clo 1996/10/31 v1.3u Standard LaTeX file (size option)
+)
+\c@part=\count79
+\c@chapter=\count80
+\c@section=\count81
+\c@subsection=\count82
+\c@subsubsection=\count83
+\c@paragraph=\count84
+\c@subparagraph=\count85
+\c@figure=\count86
+\c@table=\count87
+\abovecaptionskip=\skip41
+\belowcaptionskip=\skip42
+\bibindent=\dimen102
+) (c:/emtex/texinput/latex2e/inputenc.sty beta test version
+Package: inputenc 1996/11/23 v0.9w Input encoding file (test version: still lia
+ble to change)
+ (c:/emtex/texinput/latex2e/latin1.def
+File: latin1.def 1996/11/23 v0.9w Input encoding file (test version: still liab
+le to change)
+))
+(c:/emtex/texinput/latex2e/babel.sty
+Package: babel 1997/01/23 v3.6h The Babel package
+ (c:/emtex/texinput/latex2e/frenchb.ldf
+File: frenchb.ldf 1997/01/11 v1.2a French support from the babel system
+
+(c:/emtex/texinput/latex2e/babel.def
+File: babel.def 1997/01/23 v3.6h Babel common definitions
+\babel@savecnt=\count88
+\U@D=\dimen103
+)
+Package babel Info: Making : an active character on input line 160.
+Package babel Info: Making ; an active character on input line 161.
+Package babel Info: Making ! an active character on input line 162.
+Package babel Info: Making ? an active character on input line 163.
+) (c:/emtex/texinput/latex2e/english.ldf
+File: english.ldf 1996/12/23 v3.3h English support from the babel system
+)
+(c:/emtex/texinput/latex2e/portuges.ldf
+File: portuges.ldf 1996/12/23 v1.2j Portuguese support from the babel system
+Package babel Info: Making " an active character on input line 163.
+))
+(c:/emtex/texinput/latex2e/graphicx.sty
+Package: graphicx 1996/10/31 v1.0c Enhanced LaTeX Graphics (DPC,SPQR)
+ (c:/emtex/texinput/latex2e/keyval.sty
+Package: keyval 1995/09/21 v1.09 key=value parser (DPC)
+)
+(c:/emtex/texinput/latex2e/graphics.sty
+Package: graphics 1996/10/31 v1.0c Standard LaTeX Graphics (DPC,SPQR)
+ (c:/emtex/texinput/latex2e/trig.sty
+Package: trig 1994/10/16 v1.08 sin cos tan (DPC)
+)
+(c:/emtex/texinput/latex2e/graphics.cfg)
+Package graphics Info: Driver file: dvips.def on input line 82.
+ (c:/emtex/texinput/latex2e/dvips.def
+File: dvips.def 1996/12/12 v3.0d Driver-dependant file (DPC,SPQR)
+))
+\Gin@req@height=\dimen104
+\Gin@req@width=\dimen105
+) (c:/emtex/texinput/etc/emlines2.sty)
+
+! LaTeX Error: File `lay_def.tex' not found.
+
+Type X to quit or <RETURN> to proceed,
+or enter new name. (Default extension: tex)
+
+Enter file name: 
+! Emergency stop.
+<read *> 
+         
+l.16 \input{lay_def}
+                    ^^M
+End of file on the terminal!
+
+ 
+Here is how much of TeX's memory you used:
+ 984 strings out of 55897
+ 10241 string characters out of 210898
+ 60908 words of memory out of 262143
+ 3893 multiletter control sequences out of 10000
+ 3640 words of font info for 14 fonts, out of 81920 for 254
+ 24 hyphenation exceptions out of 607
+ 25i,0n,19p,221b,40s stack positions out of 300i,100n,60p,5000b,1000s
+No pages of output.

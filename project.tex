@@ -1,0 +1,1096 @@
+\chapter{Implementando os algoritmos}
+\label{chap:project}
+
+Neste capítulo estaremos descrevendo as técnicas utilizadas para a implementação de 
+2 aplicações na TN310. A primeira é a unidade de decisões globais, operando 
+como identificadora da RoI. Esta implementação, como será descrito, seguiu 
+diferentes fases. Utilizamos a 
+implementação da unidade de decisão global para que nos familiarizássemos com o 
+sistema TN310 e pudéssemos nos sentir mais à vontade quando fôssemos implementar o 
+segundo nível de validação.
+
+A segunda aplicação é o próprio 2\eiro nível de validação para o experimento 
+ATLAS/LHC. Nesta implementação utilizamos as técnicas conhecidas e entendidas com a 
+implementação da unidade de decisões globais para que nos aproximássemos mais 
+rapidamente da 
+solução do problema. Em todas as soluções expostas, tentamos abordar o
+sistema TN310 como capaz de suportar as taxas de dados do 2\eiro nível de validação,
+isto é, usando o sistema como um autêntico {\bf simulador}.
+
+Neste capítulo nos resumiremos a abordar as implementações, deixando os resultados e 
+ponderações sobre estes para o capítulo ~\ref{chap:results}.
+
+\section{A Unidade de Decisão Global (GDU) - Identificando a RoI}
+
+Duas razões nos levaram a iniciar a implementação do segundo nível de validação pelo
+sistema de decisões globais. A primeira já foi citada e se deve à necessidade de 
+ambientação com o sistema como um todo. A segunda se deve ao fato do \eng{trigger} 
+do segundo nível ser totalmente dependente da decisão da unidade de decisão 
+global e não haver sentido em simulá-lo sem tal unidade totalmente 
+operacional.
+
+Uma vez que estávamos nos familiarizando com o equipamento, decidimos implementar
+inicialmente o código em C responsável pela execução da aplicação em apenas um dos 
+16 nós de processamento disponíveis. Desta forma estaríamos liberando o peso de ter 
+que implementar uma aplicação paralela. De posse deste algoritmo totalmente 
+testado, estaríamos, então, aptos a construir um sistema utilizando o paralelismo 
+inerente ao equipamento.
+
+\subsection{A Implementação da GDU em 1 nó}
+\label{sec:single_node}
+
+Inicialmente descreveremos a função executada pela unidade de decisões globais, 
+antes de propriamente entrarmos em sua implementação. Durante esta discussão nos 
+limitaremos a expor o quadro relativo às dificuldades de implementação, visto que uma
+discussão do sistema já foi feita na seção~\secr{global_dec}.
+
+A GDU deve receber as características extraídas de uma RoI pelos Extratores de Característica e 
+baseada nelas emitir uma opinião sobre a natureza da partícula que excitou aquela 
+RoI. Esta atividade, segundo o discutido na seção~\secr{ANN_at_globaldec}, pode 
+ser realizada utilizando-se redes neurais artificiais \cite{sx:gldec}.
+
+\paragraph{Usando ANN-s.}A entrada da rede neural será um vetor contendo todas as 
+características extraídas e esta dará uma saída representativa da probabilidade de 
+uma dada partícula ter excitado aquela região de interesse que, como revisado, também 
+é uma característica favorável. Em termos de implementação em C, temos que a rede 
+neural terá um vetor com 12 posições contendo as 12 características 
+extraídas (CE-s) (números reais) e como saída a indicação da probabilidade de 
+encontrarmos elétrons, jatos, píons ou múons (vetor de 4 números reais).  
+
+\subsubsection{A Rede Utilizada.}
+Partindo de uma implementação para a GDU em ambiente UNIX utilizando o pacote 
+JETNET\footnote{Pacote para simulação e treinamento de Redes Neurais artificiais em 
+múltiplas configurações. A interface é via FORTRAN 77.} e 
+rotinas especiais, pudemos chegar a uma configuração de pesos que satifizesse a 
+um valor mínimo de erro na saída. Esta configuração de rede corresponde a uma rede com 12 
+entradas, 6 neurônios na camada escondida (hidden layer) e 4 neurônios na camada de 
+saída. É entendido que os neurônios responsáveis pela separação dos dados nos 
+diversos subtipos (elétrons, jatos, píons e múons) são os da camada escondida e a 
+camada de saída somente é responsável por evidenciar, interpretar esta separação. 
+
+Os pesos encontrados para a rede (que minimizam o erro na saída) foram distintos para 
+os diferentes tipos de decaimento apontados nas equações~\eqr{hzz4e}, \eqr{hzz2e2j}, 
+\eqr{hzz2e2mu} e \eqr{hzz4mu}. Um esforço no sentido de generalizar este 
+resultado obtendo um conjunto de pesos genérico para todos estes tipos de decaimento 
+não foi realizado. Isto se deve a 2 fatores importantes: 
+\begin{enumerate} 
+ \item Estamos interessados em ``performance'' e não em qualidade dos resultados 
+importando somente o algoritmo como um todo;
+ \item Existem outros 2 tipos de decaimento a serem treinados, e não haveria sentido 
+em produzir uma rede especializada em somente 4 dos 6 tipos indicados.
+\end{enumerate}
+
+Por questões de referência, a tabela~\tabr{eficience} pode ser consultada para que 
+tenhamos noção da qualidade de resposta do sistema de separação.
+
+\begin{table}
+ \caption[As eficiências (em \%) obtidas durante a fase de teste de treinamento da unidade de 
+decisões globais (JETNET).]{As eficiências (em \%) obtidas durante a fase de teste de 
+treinamento da unidade de  
+decisões globais para os diferentes tipos de decaimento. Os valores para píons são 
+muito precisos pois possuíamos uma amostra em número reduzido deste tipo de 
+partícula, 1 ou 2 por 
+arquivo (para as outras partículas este número passa de 1500 por arquivo).}
+ \tabl{eficience}
+ \begin{center}
+  \begin{tabular}{|c|c|c|c|c|} \hline
+             & $4e^{-}$ & $2e^{-}+2j$ & $2e^{-}+2\mu$ & $4\mu$ \\ \hline \hline
+  $e^{-}$ & 97.45 & 99.50 & 94.75 & -\\ \hline
+  $jets$ & 93.40 & 96.13 & 96.40 & 100\\ \hline
+  $\pi^{-}$ & - & 0 & - & -\\ \hline
+  $\mu$ & - & 94.44 & 100 & 99.95\\ \hline
+  \end{tabular}
+ \end{center}
+\end{table}
+
+A configuração desta rede foi totalmente transportada para o sistema hospedeiro e nos 
+baseamos nesta configuração para construir o ambiente neuronal em questão.
+
+As características extraídas não possuem equivalência quanto à sua magnitude; logo, 
+uma normalização é requerida, mesmo utilizando uma função de ativação não-linear 
+como sugerida em \cite{wass:neural}. Também foi utilizado um ajuste de 
+\eng{threshold} nos neurônios. Um diagrama do neurônio utilizado na aplicação pode 
+ser visto na figura~\figr{neuron_changed}. Já o diagrama da rede com os neurônios 
+pode ser visto na figura~\figr{gdu_single}.
+
+\begin{figure} 
+ \begin{center}
+ \caption{O neurônio utilizado na rede da figura~\figr{gdu_single}.} 
+ \figl{neuron_changed} 
+ \input{picts/neuronc.pic}
+ \end{center}
+\end{figure} 
+
+\begin{figure} 
+ \begin{center}
+ \caption{A rede para a GDU implementada na TN310.} 
+ \figl{gdu_single} 
+ \input{picts/gdu_net.pic}
+ \end{center}
+\end{figure} 
+
+\paragraph{A função de ativação e sua implementação.}A implementação da função de 
+ativação (utilizamos a tangente hiperbólica) não foi feita utilizando rotinas 
+disponíveis em linguagem C  
+(\raw{tanh()}). Ao invés, utilizamos uma \eng{Look-up Table (LuT)}. Este procedimento 
+mostra-se mais rápido pois, ao invés de executarmos operações algébricas, estaremos 
+apenas utilizando uma espécie de conversão de valores segundo uma tabela. Esta 
+tabela pode ser, por exemplo, armazenada em um vetor e, quando quisermos fazer a 
+conversão de algum valor, consultamos a posição correta deste vetor. Um exemplo de 
+consulta na tabela pode ser visto na figura~\figr{lut_ex}; nesta figura, vemos a 
+conversão de um valor segundo uma tabela armazenada em um vetor; o código em C 
+equivalente a esta consulta também está incluso.
+
+\begin{figure} 
+ \begin{center}
+ \caption{Exemplo de \eng{Look-up}.} 
+ \figl{lut_ex} 
+ \input{picts/lut_ex.pic}
+ \end{center}
+A função \raw{ativa()} retirada de ~\ref{ap:global.c}. Esta função tem como entrada 
+o valor de x (\raw{parâmetro valor}) e o vetor de conversão (passado por ponteiros - 
+\raw{tb}). Retorna o valor convertido.
+\begin{verbatim}
+float ativa(float valor, float *tb)
+{
+ if( valor <= 0 )
+ {if ( valor <= -10 ) return -1.0;
+  else
+  {int indice = 1000*valor+10000;
+   return(*(tb+indice));}
+ }
+ else
+ {if ( valor > 10 ) return 1.0;
+  else return(*(tb+indice));}
+}/* Função ativa */
+\end{verbatim}
+\end{figure} 
+
+O código em InMOS C para rodar no ambiente TN310 encontra-se no 
+apêndice~\ref{ap:global1}. Uma vez que estamos tentando copiar os resultados 
+encontrados na implementação utilizando o ambiente UNIX (e o JETNET), concordamos que
+estaríamos satisfeitos se as taxas de eficiência das 2 implementações fossem iguais. 
+Somente consideramos este parâmetro, pois o valor da rede está em sua eficiência de 
+separação. 
+Mínimas diferenças nas saídas são esperadas devido a 2 fatores:
+\begin{enumerate} 
+ \item O cálculo utilizando expansão de séries para a função de 
+ativação (\raw{tanh()}) é mais preciso que o que utiliza uma tabela de procura (precisão 
+bem determinada e avaliada); 
+ \item Durante a escrita dos pesos para um arquivo, o pacote JETNET os 
+\underline{trunca}, sendo impossível a replicação exata dos resultados ali obtidos, 
+mesmo se utilizarmos novamente este pacote.
+\end{enumerate}
+
+No entanto, como veremos, estas diferenças não influenciaram na qualidade de 
+resposta da rede. 
+
+\subsection{A implementação em até 16 nós}
+\secl{gdu_16nodes}
+
+Uma vez tendo implementado e validado o sistema estaríamos aptos a utilizar todo o
+potencial do equipamento tentando otimizar a execução do algoritmo de decisão 
+global paralelizando-o. 
+
+Nosso objetivo é construir um módulo que pudesse ser totalmente transferível 
+para uma aplicação maior, ou seja, construir um módulo de decisão global 
+realocável, isto é, que possa ser utilizado durante o projeto do segundo nível 
+inteiro.
+
+As dificuldades a serem encontradas seriam as relativas às comunicações entre as 
+diversas tarefas alocadas nos nós de processamento, assim como a construção do mapa 
+organizacional da atividade. Dois enfoques poderiam ser utilizados:
+\begin{enumerate} 
+ \item Tentar otimizar o tempo de execução da rede num processo global utilizando 
+todos os processadores em função de um único algoritmo;
+ \item Utilizar cada nó de processamento disponível para implementar uma cópia da 
+rede que trabalharia em paralelo.
+\end{enumerate}
+
+O segundo enfoque foi o abordado aqui, pois estamos interessados em modularidade, e 
+não em uma otimização que consumisse todos os recursos da máquina. Um segundo motivo
+ é a existência de DSP-s \eng{on-board} em cada HTRAM; seria possível, no futuro, 
+sua utilização para a redução do tempo de processamento sem que precisássemos 
+dedicar mais de um nó com tamanha capacidade de processamento em uma atividade tão simples.
+
+Para utilizarmos o segundo enfoque visualizamos que estávamos diante de uma 
+aplicação tipo \eng{master-slave} (paralelismo de dados) e, assim, a construção de um 
+processo supervisor ({\eng{master}) se faria necessária. A abordagem quanto ao 
+paralelismo de dados é intrínseca a esta aplicação, pois estamos lidando como 
+distintas RoI-s, que podem ser processadas independentemente sem que haja perda de 
+informações.
+
+A aplicação seria, então, constituída de uma tarefa supervisora que repassaria os 
+dados para unidades de decisão global modulares que operam sobre estes dados, 
+retornando o vetor de probabilidades destes dados. As unidades de decisão global 
+continuariam a se comportar como a rede descrita na seção~\secr{single_node}. O 
+processo supervisor deve carregar os dados e repassá-los de forma bem determinada às
+aplicações e, ao mesmo tempo, recolher as saídas. A figura~\figr{gdu_full} mostra um
+diagrama relacional entre as tarefas da aplicação sugerida. Repare que não 
+utilizamos mais de 16 tarefas, pois somente existem 16 nós independentes na máquina-alvo
+(TN310); nesta e em outras aplicações desejamos que o potencial de cada nó seja 
+totalmente dedicado à execução de uma única tarefa por motivos de eficiência.
+
+\begin{figure} 
+ \begin{center}
+ \caption{Um esquema da GDU rodando em paralelo, com 16 nós de processamento.} 
+ \figl{gdu_full} 
+ \input{picts/gdu_full.pic}
+ \end{center}
+\end{figure} 
+
+\subsubsection{O processo supervisor}
+\secl{sequential}
+
+O processo supervisor é incumbido de várias tarefas, inclusive a de administrar o 
+fluxo de dados e contar o tempo total de aplicação para que seja feita uma 
+estimativa do \eng{speed-up} final. Um fluxograma para o processo supervisor pode 
+ser visto na figura~\figr{sup_flow}.
+
+\begin{figure} 
+ \begin{center}
+ \caption{O fluxo de atividades do processo supervisor.} 
+ \figl{sup_flow} 
+ \input{picts/sup_flow.pic}
+ \end{center}
+\end{figure} 
+
+Existem 2 atividades que podem melhor caracterizar o papel do processo supervisor, a 
+primeira é a atividade de distribuição/recolhimento de dados, a segunda é a 
+inicialização dos processos escravos, no nosso caso específico as unidades de 
+decisão global. 
+
+\paragraph{Distribuição de dados.} Os dados (vetores com 12 características de alguma
+ RoI disparada pelo 1\eiro nível) podem ser passados para as unidades de decisão 
+global de 2 formas distintas:
+\begin{enumerate} 
+ \item Uma vez inicializado\footnote{Isto implica o carregamento, pelas GDU-s, dos 
+pesos da rede e da tabela de conversão para a função de ativação.} o sistema, 
+esperamos uma espécie de \eng{hand-shake} de alguma unidade de decisão 
+global (indicando que está livre para receber dados), de forma que somente repassamos 
+dados \eng{on-demand}; ou 
+ \item Uma vez inicializado o sistema distribuímos os dados sequencialmente para a 
+primeira unidade, depois para a segunda e assim sucessivamente, ignorando se as 
+unidades estão ou não-livres.
+\end{enumerate}
+
+A princípio, a primeira forma parece ser a mais eficiente, pois estaremos lidando com 
+nós de processamento distintos, que podem demorar mais ou menos para finalizar suas 
+atividades (embora idênticas). Para que façamos uso deste método, além da 
+inicialização da aplicação, devemos inicializar o funcionamento dos escravos (cada um 
+com um dado), pois a princípio todos estão livres. Depois desta inicialização, a 
+aplicação supervisora trabalharia sob-demanda, entregando dados novos e recolhendo 
+dados antigos para aplicações que acenassem indicando terem consumido os dados 
+anteriores. Um diagrama esquemático (figura~\figr{ondemand}) mostra o processo de 
+trabalho sob-demanda executável por uma tarefa supervisora genérica.
+
+\begin{figure} 
+ \begin{center}
+ \caption{Um supervisor trabalhando sob-demanda em uma configuração 
+\eng{master-slave}.} 
+ \figl{ondemand} 
+ \input{picts/ondemand.pic}
+ \end{center}
+\end{figure} 
+
+Embora pareça mais flexível, a primeira forma de implementação não leva em 
+consideração alguns fatores como o tempo de execução do algoritmo da GDU e nem o tempo
+gasto para a distribuição de dados. De fato, testes realizados (explanados mais a 
+diante) nos mostraram que o tempo gasto no processamento pela unidade de 
+decisões globais (\eng{slave}) era muito inferior ao tempo gasto na distribuição dos 
+dados. Assim, ao distribuir o vetor de características para todas as aplicações pela
+primeira vez (inicialização de operação) já teríamos a primeira das unidades de 
+decisão global livre; sendo assim, por que esperar um \eng{hand-shake}? O método 
+mais otimizado seria o de ir distribuindo e recolhendo os dados como com uma 
+``metralhadora'', de forma circular (\eng{Round Robin}), da primeira à ultima unidade, 
+ininterruptamente e sem levantar questões sobre a disponibilidade da tarefa 
+escrava. A otimização chegaria aqui sob a forma de redução do código (nesse caso a 
+checagem de disponibilidade).
+
+É claro que esta abordagem, embora reduza o tempo final de execuçao, não é das mais
+flexíveis num sentido mais amplo da palavra. Imaginemos o caso em que um dos nós pare 
+de funcionar. 
+Usando a primeira abordagem, aconteceria que apenas perderíamos um dado, e o 
+processo continuaria a funcionar mesmo com o nó defeituoso. Já com a segunda 
+abordagem, se um dos nós parasse de operar, o processo supervisor seria travado, pois 
+estaria, para sempre, esperando uma saída do nó defeituoso\footnote{Lembrar que a 
+comunicação com canais em InMOS C é bloqueante às duas tarefas, emissora e receptora 
+de dados.}. Como estamos usando um sistema onde erros desta natureza ocorrem em 
+escala reduzidíssima, optamos pela segunda abordagem.
+
+\subparagraph{\eng{Channing In and Out.}} A comunicação entre as atividades é 
+realizada utilizando-se as funções da tabela~\tabr{channel.h}. O fluxograma para a 
+troca de dados com e sem \eng{hand-shake} entre o supervisor e escravos pode ser 
+vista na figura~\figr{communic}.
+
+\begin{figure} 
+ \begin{center}
+ \caption{A comunicação entre o supervisor e uma GDU, com (a) e sem (b) 
+\eng{hand-shake}.}  
+ \figl{communic} 
+ \input{picts/shake.pic}
+ \end{center}
+\end{figure} 
+
+O código comentado do processo supervisor pode ser encontrado no 
+apêndice~\ref{ap:sup_global}. Os resultados, no capítulo~\ref{chap:results}.
+
+\section{Implementação do segundo nível de validação}
+
+Uma vez tendo implementado com êxito o sistema de decisão global, estamos aptos a 
+trabalhar no segundo nível de validação como um todo. O segundo nível é composto de 
+várias subtarefas e aplicações, que se interligam formando uma complexa rede de 
+protocolos e dados. Como elucidado na seção~\secr{level2}, o segundo nível é composto
+ de:
+\begin{enumerate} 
+ \item Pré-processamento;
+ \item RoI \eng{Collection};
+ \item Extração de Características;
+ \item Decisão Global em 2 subfases:
+\begin{enumerate} 
+ \item Identificação da partícula excitadora da RoI; e
+ \item Identificação do canal físico de um evento.
+\end{enumerate}
+\end{enumerate}
+
+Estes se somam a um supervisor formando o sistema de validação. Nossa disponibilidade 
+de equipamento é uma máquina com 16 nós baseados no padrão HTRAM, ou seja, um 
+conjunto de processadores potentes. Dentre as três implementações possíveis para o 
+segundo nível, a arquitetura B parece ser a mais interessante do ponto de vista do 
+equipamento. A arquitetura A não é implementável na TN310 pois exige processamento 
+diferenciado para os extratores de característica, com equipamento altamente 
+granulado\footnote{A granularidade é um conceito inerente à sistemas distribuídos: Um 
+sistema é muito granulado (\eng{fine grained}) se possui muitos nós de processamento 
+baseados em processadores de baixa ``performance'' e pouco granulado (\eng{coarse 
+grained}) se possui poucos nós baseados em  processadores de alta ``performance'' (caso da 
+TN310).} a arquitetura C é baseada em chaves muito rápidas (tecnologia ATM), que 
+também não se encontra em nosso poder. A arquitetura B utiliza processadores com 
+alto poder de processamento para realizar um misto entre aplicações de paralelismo 
+de fluxo e paralelismo de dados na execução da tarefa do 2\eiro nível. 
+
+A aplicação do paralelismo de dados vem do fato de aproveitarmos uma grande quantidade de nós de 
+processamento para replicarmos módulos de algumas tarefas, como a dos extratores de 
+característica e das unidades de decisão global. Quanto ao paralelismo de fluxo, 
+ele é aplicado quando se percebe que o processamento de um evento é, em verdade, uma
+seqüência repetida de processos, i.e.:
+\begin{enumerate} 
+ \item Extraem-se as características de cada RoI;
+ \item Decide-se sobre a partícula excitadora;
+ \item Decide-se sobre o canal físico representativo de um conjunto de RoI-s.
+\end{enumerate}
+Isto lembra uma linha de montagem, e poderemos então aproveitar esta característica 
+para paralelizarmos também a aplicação em relação ao seu fluxo.
+
+Nossa implementação também parte do princípio que os dados disponíveis já se 
+encontram pré-processados e coletados, estando prontos para serem abastecidos aos 
+Extratores de Característica. Optamos por esta abordagem pelo fato de a demanda da 
+arquitetura B apontar para o uso de rápidos \eng{pipelines} operando na taxa de dados do 
+segundo nível para a execução das unidades de pré-processamento e coleção de RoI-s. 
+Ainda, restringiu-se o funcionamento da aplicação até a identificação da RoI. Posterior
+identificação do canal físico exigiria treinamento e implementação de novos padrões 
+de rede, tendo em vista vários complicadores como o fato de eventos distintos 
+possuírem diferentes números de RoI-s. A implementação da estrutura como um todo
+poderia, neste caso, ser reaproveitada visto que tal fase se mistura à própria 
+identificação da RoI.
+
+A figura~\figr{mod_b} é repetida aqui mostrando quais partes do 2\eiro nível de 
+\eng{trigger} serão implementadas na TN310 (figura~\figr{mod_b_implementation}).
+
+\begin{figure} 
+ \begin{center}
+ \caption{As partes a serem implementadas na TN310 do segundo nível de \eng{trigger} 
+do experimento ATLAS/LHC.} 
+ \figl{mod_b_implementation} 
+ \input{picts/mod_b_i.pic}
+ \end{center}
+\end{figure} 
+     
+Os extratores de característica foram substituídos por um bloco de processamento que 
+consome o tempo de aplicação, mas que, em verdade nada processa. Esta decisão foi 
+tomada pois extratores de característica não foram o alvo principal deste trabalho, 
+embora possam ser encontrados em muitas referências de nosso grupo (Colaboração 
+Internacional CERN/COPPE/UFRJ). Existem vários laboratórios trabalhando na 
+otimização de extratores para diversos subsistemas. A utilização de extratores 
+específicos retiraria a flexibilidade de uma aplicação cuja meta principal seria
+verificar o funcionamento do equipamento quando exposto a um quadro de impacto 
+como o do sistema de validação. Tendo estes fatores em vista, decidimos por esta 
+substituição.
+
+Um diagrama topológico (e genérico) da implementação da aplicação no sistema TN310 
+pode ser visto na figura~\figr{top_tn}. Os blocos pontilhados representam processos 
+que foram substituídos pelo tempo de processamento equivalente.
+
+\begin{figure} 
+ \begin{center}
+ \caption{Diagrama da implementação genérica do sistema de validação da 
+figura~\figr{mod_b_implementation} no sistema TN310.} 
+ \figl{top_tn} 
+ \input{picts/top_tn.pic}
+ \end{center}
+\end{figure} 
+
+\paragraph{Dados.}Uma vez que estaríamos utilizando enfoques que visam a detetar 
+tempos de  
+processamento e ``gargalos'' durante a execução da aplicação, os dados que estão sendo 
+passados para os extratores de característica são dados pseudoaleatórios, assim como
+suas saídas. Dados reais somente estarão sendo utilizados nas unidades de decisão 
+global, visto que aproveitaremos a unidade modular previamente construída para 
+preencher tal espaço. A devida substituição dos dados aleatórios por dados válidos 
+para a unidade de decisão global será feita no momento oportuno como será visto e não 
+representa peso significativo no tempo de processamento global.
+
+\subsection{Simulando o segundo nível}
+\secl{simul}
+
+Para simularmos o segundo nível de validação no menor tempo possível alguns aspectos
+devem ser levados em conta:
+\begin{itemize} 
+ \item Estamos interessados na máxima otimização das rotinas a serem executadas;
+ \item Interessa-nos, também, que haja uma minimização na comunicação entre as 
+tarefas, pois isto introduz uma seqüencialização da atividade;
+ \item A divisão das tarefas e processadores deve ser feita de forma a balancear ao 
+máximo a carga sobre as aplicações, de tal forma que os dados fluam sem que haja 
+muitos ``gargalos''.
+\end{itemize}
+
+A máxima otimização do tempo de execução das rotinas pode ser observada segundo 
+algumas regras de programação e alocação do código nos nós de processamento, como é 
+possível ver na seção \eng{Performance Tips} em ~\cite{telmat:manual}. 
+
+A minimização do código do processo de comunicação entre as atividades se resume 
+basicamente a remover processos de comunicação desnecessários, como confirmações de 
+recebimento de dados e \eng{hand-shakes}\footnote{Lembre-se de que a comunicação por 
+canais é um processo bloqueante e que esta fato remove a necessidade de \eng{forced 
+acknolegments} e \eng{hand-shakes}.}. Uma vez que estamos lidando com um 
+\eng{pipeline}, fica difícil reduzir a taxa de comunicação com relação aos dados-alvo
+do \eng{pipe}, no nosso caso as RoI-s.
+
+A divisão das tarefas visa a balancear o sistema de tal forma que partes que executem 
+suas atividades rapidamente fiquem pouco tempo paradas esperando a execução de 
+outras partes da aplicação. Devemos, entretanto, nos lembrar de que a alocação de pelo 
+menos 2 processadores para cada atividade deva ser feita de forma a caracterizar a 
+utilização do paralelismo de dados nas diversas subtarefas do sistema de validação.
+
+Uma vez que o processo de otimização acontece passo a passo, exporemos aqui as 
+implementações e otimizações feitas no decorrer do tempo enfatizando a utilização de
+novos elementos e conceitos ao longo das diferentes versões do simulador.
+
+\subsubsection{Simulador - Versão 1}
+
+Nesta versão utilizamos o conhecimento adquirido projetando-se a aplicação para a 
+unidade de decisões globais para chegarmos a um projeto final do sistema. É claro 
+que levamos em consideração todos os aspectos citados na seção~\secr{simul}.
+
+Uma configuração que atende a todos os pré-requisitos expostos até o presente é 
+exibida no diagrama da figura~\figr{simul_1}. Neste diagrama identifica-se uma 
+tarefa supervisora, desempenhando papel semalhante ao da tarefa supervisora na
+ diagramação das unidades de decisão global. Identificamos também 2 nós de 
+processamento responsáveis pela extração de característica para calorímetros, 3 para
+ os extratores de TRT, 3 para SCT e 3 extratores para os dados da câmara de múons. 
+Esta separação se deve a fatores de balanceamento. Em seguida observam-se, ao invés de
+uma, 2 aplicações fazendo o papel de \eng{switching network} chamadas de Local 
+Network 0 e Local Network 1 (LN0 e LN1). Ao final, as unidades de decisão global.
+
+\begin{figure} 
+ \begin{center}
+ \caption{O diagrama da aplicação a ser simulada na TN310.} 
+ \figl{simul_1} 
+ \input{picts/simul1.pic}
+ \end{center}
+\end{figure} 
+
+\paragraph{O Fluxo de Dados.} O fluxo de dados é facilmente entendido e acompanha os
+ seguintes passos:
+\begin{enumerate} 
+ \item As RoI-s pré-processadas e coletadas estão à disposição da aplicaçao 
+supervisora (lembremos que os dados são pseudo-aleatórios e sem maior importância em 
+seu conteúdo, mas de vital importância em seu tamanho);
+ \item Estas são repassadas para os extratores de característica de acordo com o 
+subsistema a que pertencem, i.e., dados de calorímetros vão para os extratores de 
+calorímetros e, assim, sucessivamente;
+ \item Os dados processados são recolhidos pela LN0, que aguarda até que todos os 
+dados relativos a uma RoI cheguem; quando isto acontece, as características extraídas
+são repassadas a LN1;
+ \item A LN1 controla a interação com as unidades de decisão global, i.e., repassa o
+vetor de características (substituído por dados válidos) e recolhe o vetor de 
+probabilidades, repassando-o ao supervisor por ocasião do final de processamento.
+\end{enumerate}
+
+Este processo é repetido no sistema distribuído 500 vezes. Achamos que este número 
+representava uma quantidade de RoI-s suficiente para que pudéssemos estimar o tempo 
+de processamento para uma única RoI.
+
+Para que não nos estendamos demasiadamente na explanação de versões de programas que 
+não representem a versão final, elucidaremos apenas alguns pontos de cada uma destas 
+versões que as caracterizam, alocando, no final do documento, um apêndice onde é 
+possível encontrar a versão final da aplicação comentada.
+
+\paragraph{Processo Supervisor - detalhes de implementação.} O processo supervisor 
+da primeira aplicação foi construído baseado no fluxograma da 
+figura~\figr{sup_version_1}.
+
+\begin{figure} 
+ \begin{center}
+ \caption{Fluxograma do processo supervisor para a simulação do segundo nível de 
+\eng{trigger}.} 
+ \figl{sup_version_1} 
+ \input{picts/sup_v1.pic}
+ \end{center}
+\end{figure} 
+
+A primeira fase do programa consiste em inicializar todo o sistema. Esta fase é 
+responsável por carregar as unidades de decisão global com pesos, vetores de 
+normalizaçào e a tabela para a conversão da tangente hiperbólica, e carregar a LN1 
+com dados válidos para as unidades de decisão global; o código destas fases segue no
+escopo da figura~\figr{sup_v1_init}.
+
+\begin{figure} 
+ \begin{center}
+ \caption{As instruções-chave que implementam a inicialização do sistema pelo 
+supervisor.} 
+ \figl{sup_v1_init} 
+\begin{verbatim}
+...
+/* Criação dos canais */
+int InputSize = (int) *((long int *) get_param(4));
+int OutputSize = (int) *((long int *) get_param(6));
+Channel **Input = CreateChannels(get_param(3), InputSize);
+Channel **Output = CreateChannels(get_param(5), OutputSize);
+Channel *from_ln1 = get_param(7);
+Channel *to_ln1 = get_param(8);
+int gdInSize = (int) *((long int *) get_param(10));
+int gdOutSize = (int) *((long int *) get_param(12));
+Channel **to_gd = CreateChannels(get_param(11), gdOutSize);
+/* End Channel creation */
+...
+/* Envia a matriz que contem os vet_ROI's para LN1 */
+ChanOut(to_ln1,matriz,sizeof(matriz));
+printf(" Sent true global data to Local Network 1.\n");
+...
+/* Feeding Global Decision Workers */
+printf("Loading Global Decision Units...\n");
+printf(" -- Particle identification ONLY\n");
+/* Lê tabela com valores das tangentes hiperbólicas */
+leia_tabela(tab);
+/* Lê arquivos de pesos */
+leia_dumps(hidd,outlay);
+/* Lê o arquivo com os valores de normalização */
+leia_norma(normal);
+for(i=0;i<gdOutSize;i++)
+{
+ ChanOut(to_gd[i],tab,sizeof(tab)); /* Tabela com tanh */
+ ChanOut(to_gd[i],normal,sizeof(normal)); /* Vetor de normalizacao */
+ ChanOut(to_gd[i],hidd,sizeof(hidd)); /* Neuronios da camada escondida */
+ ChanOut(to_gd[i],outlay,sizeof(outlay)); /* Neuronios da camada de saida */
+ printf("GD Worker #%d, LOADED.\n",i);
+}/* end for(i) */
+/* Fim do envio de dados para Global Decision Network */
+...
+\end{verbatim}
+ \end{center}
+\end{figure} 
+
+Em seguida, a contagem de tempo é disparada; dois contadores são utilizados, 1 para o
+ tempo global e 1 para o tempo de distribuição dos dados. Este segundo contador tem 
+por objetivo determinar qual é o tempo que é gasto para que passemos os dados para 
+os extratores de característica. Veja a seguir o código.
+
+\begin{verbatim}
+...
+printf("Processing, wait till end...\n");
+inicio_global = ProcTime();
+...
+/* Conta tempo de distribuição para cada RoI/subsistema de deteção */
+inicio = ProcTime();
+...
+\end{verbatim}
+
+Inicia-se então a distribuição de eventos pelos extratores de característica. Uma 
+vez que estamos utilizando versões simuladas destas aplicações, estaremos passando 
+dados pseudo-aleatórios, i.e., dados que não têm uma significação direta mas que 
+ocupam, em tamanho, valores próximos aos valores de tamanhos reais. Desta forma 
+simularemos com precisão o tempo gasto na comunicação entre o processo supervisor e 
+os extratores de característica. A tabela~\tabr{data_to_fex} mostra o tamanho dos 
+vetores repassados aos extratores de característica. 
+
+A tabela também mostra a inclusão de um cabeçalho. Este cabeçalho é utilizado para 
+que, em qualquer momento ou em qualquer aplicação, conheça-se a procedência de uma 
+dada RoI. O cabeçalho (também com dados fictícios) contém informações como o número 
+do evento, número da RoI, número de RoI-s neste evento e mais 2 campos extras que 
+são usados em algumas partes do programa como indicadores de final de operação ou 
+registradores. A organização do cabeçalho enviado com cada RoI pode ser visto na 
+tabela~\tabr{header}.
+
+\begin{table}
+ \caption{Os dados enviados a cada vez para os extratores de característica. Valores
+em bytes.}
+ \tabl{data_to_fex}
+ \begin{center}
+  \begin{tabular}{|c|c|c|c|c|} \hline
+  & Calorímetro & TRT & SCT & Múon \\ \hline \hline
+ Dados & 484 (121 floats) & 400 (100 floats) & 400 (100 floats) & 40 (10 floats) \\ 
+\hline
+ Cabeçalho & 20 (4 integers) & 20 (4 integers) & 20 (4 integers) & 20 (4 integers) \\ 
+\hline
+ Total (bytes) & 504 & 420 & 420 & 60 \\ \hline 
+  \end{tabular}
+ \end{center}
+\end{table}
+
+\begin{table}
+ \caption{O cabeçalho enviado junto com cada RoI. Valores em bytes.}
+ \tabl{header}
+ \begin{center}
+  \begin{tabular}{|r|c|} \hline
+  & Posição no vetor \\ \hline \hline
+ \# Evento & 1 \\ \hline
+ final de processo & 2 \\ \hline
+ \# RoI & 3 \\ \hline
+ \# RoI-s no evento & 4 \\ \hline
+ registrador & 5 \\ \hline
+  \end{tabular}
+ \end{center}
+\end{table}
+
+As rotinas de envio podem ser vistas no escopo da figura~\figr{sup_v1_send}. Nestas 
+rotinas, reparamos a implementação de instruções para que o supervisor trabalhe 
+enviando dados \eng{on-demand} (instrução \raw{ProcAltList(Input);}). Esta instrução 
+recebe como parâmetro de entrada um vetor montado pela rotina \raw{CreateChannels()}
+e monitora estes canais esperando que algum deseje se comunicar; quando isto 
+acontece, ele repassa à variável \raw{i} a posição do canal, dentro do vetor querendo
+se comunicar. Por exemplo, se o canal \raw{Input(0)} quiser se comunicar, a função 
+retornará 0 (zero). E, assim, sucessivamente.
+
+Dois problemas podem ocorrer com esta implementação; os dois são 
+contornáveis ainda que demandem acréscimo de código, como foi feito. Inicialmente, 
+exporemos o quadro de conexões da aplicação.
+
+A aplicação supervisora está conectada às aplicões extratoras de características 
+através de 2 dezenas de canais (são 10 extratores, lembre-se). Dez destes canais são 
+apontados \underline{para} os extratores, logo constituindo canais de saída; os 
+outros 10 são os equivalentes de entrada de dados vindos dos extratores. Estes 2 
+jogos de canais são aqui chamados de \raw{Input} e \raw{Output} por motivos óbvios.
+A princípio o fluxo de dados somente ocorre do supervisor para os extratores, logo 
+deixando de haver necessidade do vetor de canais \raw{Output}. Os canais, também a 
+princípio, são conectados de forma estática aos extratores; assim, determinamos que o
+ canal \raw{Input[0]} estaria conectado ao extrator de calorímetro zero, o 
+\raw{Input[1]} ao extrator de calorímetro 1 e, assim, sucessivamente. Desta forma, se
+ quisermos nos comunicar com um extrator, basta que coloquemos o dado no canal daquele 
+extrator.
+
+O primeiro problema da utilização da função \raw{ProcAltList} é que ela espera que a
+tarefa que estiver livre chame a aplicação supervisora através de um canal. Isto 
+normalmente não deveria acontecer nesta aplicação, pois o fluxo de dados, como 
+explanado, ocorre do supervisor para os extratores, e \underline{jamais} ao contrário.
+ A utilização de tal função nos força a implementar um canal de comunicações que vá 
+dos extratores para o supervisor, indicando a liberação. Este passo 
+consome mais tempo de processamento, mas deve ser implementado.
+
+O segundo problema da utilização da função \raw{ProcAltList} concerne ao tempo de 
+execução. Existe, como no caso das unidades de decisão global, a necessidade de 
+inicializarmos a operação dos extratores, distribuindo um dado para cada um, pois 
+todos estão livres no início. Se, ao distribuírmos o dado para o último processador, o 
+primeiro já estiver livre, a função \raw{ProcAltList} o identificará e passará novo 
+dado para este extrator. Assim prosseguirá até o final dos dados. Porém, se a 
+aplicação for ``viciada'' (o que acontece na maioria das vezes) e os primeiros 
+extratores processarem mais rápido do que a função pode vasculhar os canais, os 
+primeiros extratores, i.e., aqueles que estão conectados aos primeiros canais serão 
+sempre beneficiados com novos dados pois a função em questão não possui um código 
+seletivo. Em outras palavras, depois que a função escolhe um canal para comunicação 
+ela ``reseta'' e começa a vasculhar do primeiro canal; se este estiver livre, ela o 
+escolhe. Em aplicações como esta, o tempo de processamento é menor que o tempo gasto 
+para enviar dados; logo, a utilização de \raw{ProcAltList}, beneficiará somente os 
+primeiros canais.
+
+Para que isto não aconteça, é necessário que façamos uma rotação na posição dos 
+canais dentro do vetor. É isto que a função \raw{RotateChannels} faz. Quando é 
+chamada, a função muda a posição dos canais no vetor. Desta forma, quando o vetor for 
+vasculhado pela função \raw{ProcAltList}, estaremos priorizando vetores que não foram
+ainda escolhidos.
+
+Um problema direto que surge com isto é que as posições antes fixas para os 
+extratores (segundo os canais a que estavam conectados) não serão mais válidas em 
+detrimento da rotação, e teremos que adicionar uma lógica para que saibamos com quem 
+estamos falando em cada momento da aplicação, como é visto na 
+figura~\figr{sup_v1_send}.
+
+A figura (na realidade é um texto) também mostra o uso da função \raw{send\_data()};
+esta função manda os dados para os extratores e controla de forma simplificada o 
+fluxo de dados na aplicação. Foram omitidos aqui trechos redundantes do programa e 
+rotinas de checagem de operação. Elas estarão inclusas em um apêndice no final do
+trabalho.
+
+\begin{figure} 
+ \caption{As rotinas de envio de dados para os extratores.} 
+ \figl{sup_v1_send} 
+\begin{verbatim}
+...
+/* A próxima instrução implementa a procura de um escravo desocupado 
+para descarregar dados */
+i=ProcAltList(Input);  /* Checks for ready FEx'or */
+...
+/* Traduz o canal que respondeu em um tipo de Ext.Car., para que não envie 
+para o Ext.Car. errado. */
+if(fex_num==0)
+{
+ tipo=i; /* se o primeiro canal for o do 1o.
+             FEx'or, então não há o que fazer !!*/
+}
+else /* Faz algoritmo para 
+        descobrir qual é o tipo do FEx'or */
+{
+ /* algoritmo omitido */
+}
+/* End seta tipo */
+...
+/* dependendo do tipo de Ext.Car. manda um tipo de dado */
+switch(tipo)
+
+case 0:
+case 1:
+		 if(hold_calo < NROIS_MAX)
+		 {
+		  send_data(Input[i],Output[i],calo_info,
+                     &hold_calo,&fim,vetor_calo,121);
+		 }
+		 break;
+...
+RotateChannels(Input,InputSize,1); 
+        /* Rotaciona canais, para nao ficar em cima de um so */
+RotateChannels(Output,OutputSize,1); 
+          /* Rotaciona out chan's para nao ficar diferente */
+fex_num--;
+if(fex_num<0) { fex_num=OutputSize-1; }
+              /* Decrementa apontador ja que houve rotacao */
+...
+\end{verbatim}
+\end{figure} 
+
+\subparagraph{Esperando os dados da LN1.} Depois de enviados todos os dados para os 
+extratores, a aplicação supervisora espera até que a tarefa responsável por colher os
+dados das unidades de decisão global (LN1) retorne os resultados. Isto é feito numa 
+imensa matriz (depois de todos os dados terem sido processados), pois desta forma 
+otimizaremos a utilização do canal. A seguir, o trecho do programa dedicado a esta 
+tarefa.
+\begin{verbatim}
+ChanIn(from_ln1,matriz_prob,sizeof(matriz_prob));
+\end{verbatim}
+
+\subparagraph{A contagem de tempo é parada.}
+\begin{verbatim}
+final=ProcTime(); /* End final time */
+acc=ProcTimeMinus(final,inicio_global); /* Evaluates time spent */
+\end{verbatim}
+
+A partir daí, a aplicação escreve os diversos dados recolhidos durante a sua operação
+e finaliza.
+
+\paragraph{Os extratores de característica.} Os extratores de característica são 
+processos mais simples, pois constituem simuladores. Estas tarefas recebem o vetor 
+de dados da aplicação supervisora, esperam um tempo 
+pré-determinado (tabela~\tabr{fexor_proc}) e repassam um vetor cujo 
+tamanho (tabela~\tabr{fexor_out}) equivale ao das características extraídas por 
+algoritmos reais. Repare que o volume de dados é bem menor. Isto mostra a eficiência
+ dos algoritmos de extração na transformação de todos os dados de uma RoI em poucas 
+variáveis inteligentes.
+
+\begin{table}
+ \caption{Tempos de processamento simulados para cada tipo de extrator.}
+ \tabl{fexor_proc}
+ \begin{center}
+  \begin{tabular}{|c|c|} \hline
+  Extrator & Tempo \\ \hline \hline
+  Calorímetro & $10\mu s$ \\ \hline
+  TRT & $400\mu s$ \\ \hline
+  SCT (PreShower) & $250\mu s$ \\ \hline
+  Múon & $5\mu s$ \\ \hline
+  \end{tabular}
+ \end{center}
+\end{table}
+
+\begin{table}
+ \caption{Os dados externalizados pelos extratores de característica para LN0 (em 
+bytes).}
+ \tabl{fexor_out}
+ \begin{center}
+  \begin{tabular}{|c|c|c|c|} \hline
+  Extrator & Dados & Cabeçalho & Total \\ \hline \hline
+  Calorímetro & 24 (6 floats) & 20 (5 integers) & 44 \\ \hline
+  TRT &  8 (2 floats) & 20 (5 integers) & 28 \\ \hline
+  SCT (PreShower) &  12 (3 floats) & 20 (5 integers) & 32 \\ \hline
+  Múon &  4 (1 float) & 20 (5 integers) & 24 \\ \hline
+  \end{tabular}
+ \end{center}
+\end{table}
+
+\paragraph{As redes locais.} Estas redes fazem o papel da chave no esquema da 
+figura~\figr{mod_b}. A primeira parte recebe os dados dos extratores de 
+característica e os armazena em uma matriz de forma ordenada, segundo a 
+organização exigida pela unidade de decisão global, ou seja, 6 características de 
+calorímetro, 2 de TRT, 3 de SCT e 1 de Múon. Esta matriz é bidimensional, onde as 
+linhas representam o evento e as colunas, as RoI-s. Cada posição é uma estrutura de 
+dados contendo o cabeçalho e as características já extraídas para aquela RoI.
+\begin{verbatim}
+struct _roi_ /* Estruturas para a matriz de dados */
+{
+ float ext_feat[NFEAT];
+ int header[HEADER_SIZE];
+};
+\end{verbatim}
+
+A LN0 deve, a cada vez que recebe uma nova entrada, verificar se todas as 
+características para aquela RoI já não chegaram. Caso tenham chegado todas as 
+características, então estes dados já podem ser repassados para o próximo estágio, a 
+LN1; caso não, elas são armazenadas, aguardando a parte restante das características.
+
+A recepção de dados é feita sob-demanda operando de forma parecida com a implementação
+feita na aplicação supervisora (usando \raw{ProcAltList}). A única diferença é que o 
+fluxo de dados, aqui, não justifica a utilização de \eng{hand-shake}. A função 
+\raw{recv\_data()} é responsável pelo controle do fluxo de dados no programa, 
+ajustando-se ao dado de entrada. Ela o posiciona corretamente na matriz de dados, 
+verificando a natureza de seu cabeçalho informativo.
+\begin{verbatim}
+while(final!=4)
+ {
+  /* Processador Liberado ?? */
+  i=ProcAltList(Input);  /* Checks for ready FEx'or */
+  /* Descobre o tipo de FEx'or que requisitou dados */
+  if(fex_num==0)
+  {
+	tipo=i; /* se o primeiro canal for o do 1o. FEx'or, então não há o que fazer !!*/
+  }
+  else /* Descobre qual é o tipo do FEx'or */
+  {
+   /* omitido */
+  }
+  /* End seta tipo */
+
+/* Somente precisamos testar processador pois no caso de RoI's analizadas
+ por um tipo de rede acabarem, o processador responsável não irá mais acenar
+ com ChanOut(); */
+
+switch(tipo)
+{
+ case 0:
+ case 1: recv_data(Input[i], vet_info, matriz, &final, 6, 0); /* CAL */
+         break;
+ case 2:
+ case 3:
+ case 4: recv_data(Input[i], vet_info, matriz, &final, 2, 6); /* TRT */
+         break;
+...
+    /* Este é um exemplo de utilização do 5o. elemento do 
+       header (registrador) se header[4] == 4, isto significa
+                    que já recebeu os dados dos 4 extratores */
+    if(matriz[vet_info[0]][vet_info[1]].header[4]==4)
+    {
+     ChanOut(to_ln1,vet_info,sizeof(vet_info));
+     ChanOut(to_ln1,&matriz[vet_info[0]][vet_info[1]],sizeof(struct _roi_));
+    }/* Dados mandados para LN1 */
+\end{verbatim}
+ 
+Como é possível ver, também são utilizados aqui os procedimentos de rotação de canais e 
+``setagem'' do tipo de extrator que acena indicando estar com dados prontos.
+
+A segunda parte da rede local, LN1 (\eng{Local Network one}), recebe as 
+características das RoI-s sob a forma de estruturas (cada uma com 12 \raw{floats} 
+contendo as características e 5 inteiros com o cabeçalho) e 
+escolhe uma unidade de decisão global para onde passar estes dados. A escolha aqui 
+também é feita sob-demanda.
+
+Para que pudéssemos utilizar a unidade de decisão global modelada na 
+seção~\secr{gdu_16nodes} sem alterações e aproveitando sua modularidade, elaboramos 
+um sistema que, ao passar as características para uma determinada unidade de decisão 
+global, guarda o cabeçalho relativo àquela RoI. Desta forma, somente remetemos as 
+características, e não correremos o risco de cofundir as RoI-s. Partes relevantes do 
+código encontram-se a seguir:
+\begin{verbatim}
+...
+ /* Input from LN0, first the header, then, the features */
+ ChanIn(from_ln0,vet_info,sizeof(vet_info));
+ ChanIn(from_ln0,&matriz_dados[vet_info[0]][vet_info[1]],sizeof(struct _roi_));
+...
+ /* Changes received data for valid ones */
+ for(i=0;i<=11;i++)
+ {
+  matriz_dados[vet_info[0]][vet_info[1]].ext_feat[i]=matriz_real[linha][i];
+ }
+...
+  /* Any processor freed ?? */
+  i=ProcAltList(Input);  /* Checks for ready GD Workers */
+
+  ChanIn(Input[i],&matriz_prob[gd[i][0]][gd[i][1]].outnet[0],
+                                 4*sizeof(float)); /* Receive data */
+  ChanOut(Output[i],&matriz_dados[vet_info[0]][vet_info[1]].ext_feat[0],
+                                     12*sizeof(float)); /* Pass new data */
+  /* Salva header */
+
+  for(k=0;k<HEADER_SIZE;k++)
+  {
+	matriz_prob[gd[i][0]][gd[i][1]].header[k]=gd[i][k];
+                              /* Saves header into right position */
+	gd[i][k]=vet_info[k];
+  }
+  /* Does not have to rotate since if an application
+     is free it can be used, even though it's the first (or the second)
+     one always */
+
+\end{verbatim}
+
+\paragraph{A unidade de decisões globais.} A unidade de decisões globais é a mesma 
+modelada na seção~\secr{gdu_16nodes} e não será adicionado nenhum comentário extra 
+aqui.
+
+\paragraph{Concluindo sobre o modelo.} Este modelo, totalmente operacional, foi o 
+1\eiro que tentamos implementar. Ele é altamente robusto, visto que opera 100\% 
+sob-demanda. Se não for solicitado, não opera. Isto significa que, se partes do 
+sistema falharem, ele não interrompe suas rotinas ou fica travado. 
+
+Durante as medidas de ``performance'' pudemos perceber 2 fatores que seriam responsáveis
+por uma queda de desempenho: o primeiro é relacionado a extratores cujos dados 
+acabaram. Nestes casos, embora não haja mais dados para serem tratados, eles 
+continuam acenando indicando estarem livres para processarem. Esta não é uma boa 
+característica, pois o supervisor perderá tempo até que descubra que os dados daquele
+tipo de extrator acabaram. Uma possível alteração seria fazer os processadores de 
+características cujos dados acabaram pararem de acenar; assim, economizaríamos este 
+tempo gasto na verificação de processos terminados.
+
+O segundo fator responsável pela redução de ``performance'' é mais complexo. Como vimos 
+na seção~\secr{connect} a conexão entre os diversos nós de processamento é feita de 
+forma distinta. Estas conexões beneficiam a comunicação entre alguns nós e 
+prejudicam a comunicação com outros. A exemplo, vemos processos rodando em nós (0 e 8) 
+que se comunicam 
+através de 4 chaves STC104, ou processos que se comunicam através de apenas 1 
+destas chaves. Isto sugere que, para termos ``performance'' máxima, teremos que realocar 
+os processos de forma a otimizar os processos de comunicação entre as tarefas. Desta
+forma, será possível reduzir o tempo gasto em comunicação.
+
+\subsubsection{Simulador - Versão 2}
+
+Nesta versão estaremos priorizando a realocação dos processos de forma ordenada,
+bem como resolvendo a questão de extratores livres cujos dados já acabaram.
+
+A tabela~\tabr{simul_1} pode ser elucidativa quanto à alocação dos processsos feita 
+durante a primeira versão do simulador.
+
+\begin{table}
+ \caption{A alocação de processos na primeira versão do programa simulador.}
+ \tabl{simul_1}
+ \begin{center}
+  \begin{tabular}{|c|c|} \hline
+ Task & Node \\ \hline \hline
+Supervisor & 0 \\ \hline
+Calo.FEx 0 & 1 \\ \hline
+Calo.FEx 1 & 2 \\ \hline
+TRT.FEx 0 & 3 \\ \hline
+TRT.FEx 1 & 4 \\ \hline
+TRT.FEx 2 & 5 \\ \hline
+SCT.FEx 0 & 6 \\ \hline
+SCT.FEx 1 & 7 \\ \hline
+SCT.FEx 2 & 8 \\ \hline
+Muon.FEx 0 & 9 \\ \hline
+Muon.FEx 1 & 10 \\ \hline
+LN0 & 11 \\ \hline
+LN1 & 12 \\ \hline
+GDU 0 & 13 \\ \hline
+GDU 1 & 14 \\ \hline
+GDU 2 & 15 \\ \hline
+  \end{tabular}
+ \end{center}
+\end{table}
+
+Nesta tabela, vemos que a alocação dos processos foi feita sem que nenhum cuidado 
+fosse tomado quanto à distância entre os nós de processamento. Reparemos que, para 
+que o supervisor se comunique com qualquer dos extratores, é preciso que os dados 
+atravessem \underline{pelo menos {\bf 2}} chaves. Já a comunicação entre os extratores 
+e a rede local (LN0) se dá através de conexões de vários tamanhos, ou seja, através 
+de 1, 2 ou 3 chaves, retirando o balanceamento requerido em aplicações deste tipo, 
+como já mencionado.
+
+Por outro lado, temos que as unidades de decisão global estão bem alocadas em relação
+à rede local (LN1) visto que para que se comuniquem com ela, os dados terão que 
+atravessar somente uma chave.
+
+O diagrama da figura~\figr{sim_v1_aloc} pode ser elucidativo quanto à distância 
+entre os processadores. Já a tabela~\tabr{sim_v2} apresenta um novo e eficiente 
+posicionamento para as tarefas desta aplicação. A figura~\figr{sim_v2_aloc} mostra 
+o diagrama de figura~\figr{sim_v1_aloc} com as alterações propostas por esta última 
+tabela. Estas alterações foram feitas baseadas em algumas características do 
+sistema; são elas:
+\begin{itemize} 
+ \item Tarefas que demandem alto fluxo de dados devem permanecer maximamente 
+próximas;
+ \item Tarefas que executem suas atividades em tempo menor jamais serão beneficiadas
+ com uma alocação mais favorável do que tarefas mais longas, por questões de 
+balanceamento de carga;
+ \item Uma vez que estamos em um sistema trabalhando sob-demanda e existe a 
+possibilidade de extratores ou unidades de decisão global operarem de forma mais 
+rápida que a distribuição de dados (fazendo com que os primeiros de cada categoria 
+sempre sejam selecionados), os primeiros módulos de uma mesma tarefa devem ser 
+beneficiados quanto à sua proximidade das tarefas que enviem ou recebam dados.
+\end{itemize}
+
+\begin{figure} 
+ \begin{center}
+ \caption{O diagrama mostra a alocação de processos e a ``distância'' entre estes na
+primeira versão do programa simulador.} 
+ \figl{sim_v1_aloc} 
+ \input{picts/sim_v1_a.pic}
+ \end{center}
+\end{figure} 
+
+\begin{table}
+ \caption{Uma proposição mais eficiente para para a alocação das tarefas na TN310.}
+ \tabl{sim_v2}
+ \begin{center}
+  \begin{tabular}{|c|c|} \hline
+ Task & Node \\ \hline \hline
+Supervisor & 1 \\ \hline
+Calo.FEx 0 & 4 \\ \hline
+Calo.FEx 1 & 7 \\ \hline
+TRT.FEx 0 & 2 \\ \hline
+TRT.FEx 1 & 3 \\ \hline
+TRT.FEx 2 & 9 \\ \hline
+SCT.FEx 0 & 5 \\ \hline
+SCT.FEx 1 & 6 \\ \hline
+SCT.FEx 2 & 10 \\ \hline
+Muon.FEx 0 & 11 \\ \hline
+Muon.FEx 1 & 12 \\ \hline
+LN0 & 13 \\ \hline
+LN1 & 14 \\ \hline
+GDU 0 & 15 \\ \hline
+GDU 1 & 8 \\ \hline
+GDU 2 & 0 \\ \hline
+  \end{tabular}
+ \end{center}
+\end{table}
+
+\begin{figure} 
+ \begin{center}
+ \caption{O diagrama mostra a alocação de processos e a ``distância'' entre estes na
+segunda versão do programa simulador.} 
+ \figl{sim_v2_aloc} 
+ \input{picts/sim_v2_a.pic}
+ \end{center}
+\end{figure} 
+
+\subsubsection{Simulador - Versão 3}
+\secl{simul_v3}
+
+Nesta versão, resolvemos utilizar a técnica de distribuição circular exposta na
+seção~\secr{sequential} para otimizar a distribuição e recolhimento de dados aos 
+extratores de característica e unidades de decisão global. Esta abordagem, embora não
+nos leve a um sistema mais robusto, é, sem dúvida, a mais rápida, pois estaremos 
+eliminando algumas funções inerentes a versões anteriores do processo de simulação.
+
+O mapa organizacional das tarefas foi mantido, visto ter sido esta a configuração 
+mais otimizada para a aplicação. Uma vez que esta foi a última versão implementada,
+resolvemos por anexá-la por completo ao final do documento, no 
+apêndice~\ref{ap:simulation}. Neste apêndice encontramos o arquivo de 
+configuração (CFS) para a aplicação e os códigos das aplicações para cada tarefa 
+totalmente documentados.
+
+Nesta versão também utilizamos versões otimizadas (\raw{DirectChan-s}) das funções que 
+implementam a comunicação entre tarefas (tabela~\tabr{channel.h}).
+
+

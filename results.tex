@@ -1,0 +1,858 @@
+\chapter{Resultados obtidos e Conclusões}
+\label{chap:results}
+
+Neste capítulo, estaremos expondo os resultados obtidos com as implementações expostas
+no capítulo anterior. Para todas as implementações, consideramos o \eng{speed-up} em 
+relação a uma versão simples da aplicação, isto é, rodando em um único processador. 
+Também é feita uma revisão dos tempos de comunicação e afins.
+
+Inicialmente, repassaremos testes realizados sobre o tempo de comunicação do sistema 
+TN310. Estes testes visaram a um entendimento operacional do tempo de processamento 
+dispendido durante comunicações entre aplicações. Na segunda seção, traremos 
+resultados para a aplicação do sistema de decisão global e na seção seguinte, 
+exporemos os resultados e conclusões para a simulação do sistema de validação.
+
+\section{Teste de comunicações}
+\secl{time}
+
+Em equipamentos com número de nós de processamento considerável é necessário o 
+entendimento pleno do sistema de comunicação utilizado. Quando menciona-se 
+``Entendimento Pleno" quer se acentuar que para uma otimização das rotinas há
+ a necessidade de o programador desenvolver uma ``afinidade'' muito grande com o 
+equipamento. Esta afinidade traduz-se no entendimento de todos os detalhes de 
+funcionamento do sistema, sejam eles de alto ou de baixo nível.
+
+O processo de comunicação entre os diversos nós de processamento no sistema TN310 
+não é diferente,  
+isto é, ele possui uma interface de alto nível (como as funções da 
+tabela~\tabr{channel.h}) e uma interface de baixo nível, inerente ao sistema. A 
+interface de alto nível é responsável pelo processo de comunicação em si, mas os 
+motivos pelos quais alguns tipos de comunicação são diferentes de outros é um ponto 
+que somente pode ser explicado com o entendimento do sistema operando em baixo 
+nível. Desta forma, antes de entrarmos nos resultados destes testes propriamente,
+abordaremos alguns aspectos na forma de comunicação entre os diversos nós HTRAM do 
+sistema TN310.
+
+\subsection{Introdução ao sistema de comunicações}
+
+O sistema de comunicações da TN310 é totalmente baseado no conceito de chaveamento 
+assíncrono de pacotes (\eng{Asynchronous Packet Switch}). Este tipo de sistema pode 
+aumentar a ``performance'' em ambientes maiores, como é caso. Ele se baseia na utilização
+ de uma chave rápida (STC104) para que haja a distribuição de pacotes pela rede de 
+forma mais rápida e livre de erros possível. Estas chaves podem rotear até 32 
+pacotes diferentes ao mesmo tempo, vindo de quaisquer 32 localidades distintas e 
+indo para outras 32 localidades também distintas.
+
+A idéia é, na verdade, bem simples. Quando uma informação deseja ser mandada de um 
+ponto a outro, a tarefa no ponto emissor envia uma mensagem ao processador virtual de
+ canais local indicando o endereço e o tamanho do dado a ser mandado. O processador 
+de canais divide o dado a ser enviado em vários pacotes de tamanho predeterminado. 
+Após esta divisão, a cada pacote é adicionado um cabeçalho contendo a locação-destino 
+e a rota para o pacote. O pacote é enviado a uma chave que interpreta a primeira parte do 
+cabeçalho e envia o pacote para o nó correto, removendo a parte do cabeçalho 
+referente à rota já informada e deixando exposta a parte do cabeçalho referente ao 
+nó-destino do pacote. Ao chegar ao nó-destino,
+cada pacote é autenticado (i.e., verifica-se se realmente se está esperando 
+tal informação e se o cabeçalho está correto) e um reconhecimento (\eng{acknowledgement}) 
+é enviado para que o próximo pacote seja mandado, se este for o caso.
+
+No caso de o pacote ter que passar por 2 chaves, 3 cabeçalhos são inseridos a cada 
+pacote. Este será roteado através de 2 chaves e ocorrerão 2 remoções de 
+cabeçalhos (\eng{header deletion}) e apenas um será utilizado novamente no nó destino.
+Desta forma, é possível garantir que poderemos criar um número muito grande de 
+canais virtuais. Comunicação utilizando canais virtuais nada mais é do que 
+comunicação feita com pacotes de dados  intercalados simulando um sistema com maior 
+número de conexões do que realmente existem.
+
+Quando é dito que há uma multiplexação dos canais, quer-se dizer que, uma
+vez que são dividos em pacotes, os dados a serem enviados podem ser intercalados, 
+gerando uma rede de multiplexação de pacotes e, assim, satisfazendo um grande número 
+de canais simultâneos, chamados virtuais. 
+
+A figura~\figr{header_del} pode ser elucidativa quanto à remoção de cabeçalhos.
+
+\begin{figure} 
+ \begin{center}
+ \caption{O processo de deleção de cabeçalho em uma rede com chaveamento assíncrono 
+de pacotes.} 
+ \figl{header_del} 
+ \input{picts/head_del.pic}
+ \end{center}
+\end{figure} 
+
+\paragraph{Concluindo.} A TN310 é um sistema distribuído com 16 nós de processamento
+tipo HTRAM totalmente conectados através de uma rede de chaves assíncronas. A 
+comunicação nesta rede é feita através canais descritos em \eng{software} (InMOS C), mas
+implementados via \eng{hardware} através de um sistema de canais virtuais cujo 
+processador central é o VCP (Processador de Canais Virtuais). O VCP divide a 
+informação a ser mandada em pacotes e a cada pacote adiciona um número de cabeçalhos
+proporcional ao número de nós por onde o pacote passará. Assim sendo, se o pacote 
+tiver que passar por 2 chaves adicionar-se-ão 3 cabeçalhos (2 para as chaves e 1 para 
+o nó-destino). Os pacotes são enviados intercaladamente com outros pacotes de outras
+informações que também estão sendo enviadas. Isto cria uma rede de canais virtuais.
+
+\subsection{Os testes}
+
+Levando em consideração que estaremos alocando em cada nó de processamento uma única
+tarefa seqüencial, isto é, sem que dispare processos concorrentes, podemos chegar à 
+conclusão que todos os DS-Links estarão à disposição da aplicação para a transmissão
+de dados. Isto maximiza a utilização dos meios de comunicação de cada nó. Estamos 
+interessados em entender 2 pontos na operação do sistema:
+\begin{enumerate} 
+ \item Qual é o tamanho de cada pacote mandado por vez?
+ \item Quanto tempo demora para que pacotes sejam enviados a diferentes nós de 
+processamento?
+\end{enumerate}
+   
+A primeira questão tem um motivo prático: sabendo o tamanho do pacote, 
+podemos maximizar seu uso. A segunda questão se refere ao tempo gasto para que 
+enviemos uma quantidade fixa de dados de um ponto para outro do sistema. Ao saber 
+isto, estaremos aptos a tomar melhores decisões sobre a alocação de processos e 
+avaliar melhor o quadro de operação de uma aplicação.
+
+O teste realizado consiste em mandar dados de diferentes tamanhos para 
+diferentes nós de processamento e medir o tempo gasto durante esta transferência. 
+Saberemos que este tempo representa a melhor condição possível de operação, onde os 4
+DS-Links estarão à disposição do processo de comunicação. O envio de dados ocorreu 
+de forma iterativa, embora tenhamos descontado o tempo de iteração no final do 
+processo. A iteração serviu para que pudéssemos avaliar mais precisamente o tempo de
+comunicação para os diversos tamanhos de dados.
+
+Os resultados encontram-se na tabela~\tabr{time}. A tabela expõe na horizontal o 
+tempo (em $\mu$segundos) para que haja a transmissão do número de bytes indicados à 
+direita através de 4 tipos diferentes de conexão. Cada tipo representa o número de 
+chaves existentes entre os nós de processamento. Existem diferentes tipos de 
+conexões, como foi visto na seção~\secr{connect}. A conexão do tipo 1 representa a
+ conexão entre dois nós onde ocorre apenas uma chave; a do tipo 2, 2 chaves e, 
+assim, sucessivamente, até 4 chaves (conexão entre os nós 0 e 8).
+
+\begin{table}
+ \caption[Os tempos gastos para os diversos tamanhos de dados comunicados a 
+diferentes nós de processamento.]{Os tempos gastos para os diversos tamanhos de dados 
+comunicados a diferentes nós de processamento. Tempos em microssegundos e tamanho em 
+bytes ou pacotes de 32 bytes.} 
+ \tabl{time}
+ \begin{center}
+  \begin{tabular}{|r|r|c|c|c|c|} \hline
+Tamanho (bytes)& Tamanho (pacotes) & Tipo 1 & Tipo 2 & Tipo 3 & Tipo 4 \\ \hline \hline
+1 até 32 & 1 & 10,2 & 12,1 & 13,8 & 15,5 \\ \hline
+33 até 64 & 2 & 16,9 & 20,6 & 24,0 & 27,6\\ \hline
+65 até 96 & 3 & 23,5 & 28,9 & 34,2 & 39,5\\ \hline
+100 & 4 & 30,2 & 37,5 & 44,6 & 51,8 \\ \hline
+150 & 5 & 37,2 & 46,0 & 54,7 & 63,6 \\ \hline
+200 & 7 & 50,5 & 62,9 & 75,3 & 87,6 \\ \hline
+250 & 8 & 57,2 & 71,4 & 85,4 & 99,5 \\ \hline
+300 & 10 & 70,8 & 88,2 & 106 & 123 \\ \hline
+350 & 11 & 77,3 & 96,7 & 116 & 136 \\ \hline
+400 & 13 & 90,6 & 114 & 136 & 159 \\ \hline
+450 & 15 & 104 & 130 & 157 & 183 \\ \hline
+500 & 16 & 111 & 139 & 167 & 195 \\ \hline
+550 & 18 & 124 & 156 & 188 & 219 \\ \hline
+600 & 19 & 131 & 164 & 198 & 231 \\ \hline
+650 & 21 & 114 & 181 & 218 & 255 \\ \hline
+700 & 22 & 151 & 190 & 228 & 261 \\ \hline
+750 & 24 & 164 & 206 & 249 & 291 \\ \hline
+800 & 25 & 171 & 215 & 255 & 303 \\ \hline
+850 & 27 & 184 & 232 & 219 & 327 \\ \hline
+900 & 29 & 197 & 245 & 300 & 351 \\ \hline
+950 & 30 & 204 & 257 & 310 & 363 \\ \hline
+1000 & 32 & 217 & 274 & 331 & 387 \\ \hline
+1500 & 47 & 317 & 400 & 484 & 567 \\ \hline
+2000 & 63 & 424 & 535 & 647 & 758 \\ \hline
+2500 & 79 & 531 & 670 & 810 & 950 \\ \hline
+3000 & 94 & 631 & 797 & 964 & 1130 \\ \hline
+3500 & 110 & 737 & 931 & 1130 & 1320 \\ \hline
+4000 & 125 & 838 & 1060 & 1280 & 1500 \\ \hline
+4500 & 141 & 944 & 1190 & 1440 & 1690 \\ \hline
+5000 & 157 & 1050 & 1330 & 1610 & 1880 \\ \hline
+5500 & 172 & 1150 & 1450 & 1760 & 2060 \\ \hline
+6000 & 188 & 1260 & 1590 & 1920 & 2260 \\ \hline
+6500 & 204 & 1360 & 1720 & 2090 & 2450 \\ \hline
+7000 & 219 & 1460 & 1850 & 2240 & 2630 \\ \hline
+7500 & 235 & 1570 & 1990 & 2400 & 2820 \\ \hline
+8000 & 250 & 1670 & 2110 & 2560 & 3000 \\ \hline
+8500 & 266 & 1790 & 2250 & 2720 & 3190 \\ \hline
+9000 & 282 & 1900 & 2400 & 2880 & 3380 \\ \hline
+9500 & 297 & 2000 & 2530 & 3040 & 3560 \\ \hline
+10000 & 313 & 2120 & 2670 & 3200 & 3760 \\ \hline
+  \end{tabular}
+ \end{center}
+\end{table}
+
+Com este resultado, percebemos que o tamanho do pacote mencionado anteriormente é de 
+32 bytes. Este valor é fixo para comunicações em qualquer distância. Isto quer dizer
+que a inclusão de mais ou menos cabeçalhos não influencia no tamanho do pacote 
+enviado. 
+
+A aplicação foi feita de forma que as tarefas escravas receptoras de dados 
+sempre estariam disponíveis para o recebimento de dados, nunca atrasando a 
+tarefa-mestra. Um fator interessante é que podemos perceber que, em verdade, o que ocorre  
+é uma distribuição de pacotes. Este fato fica marcante se olharmos a 
+segunda parte da tabela, que indica ``tamanho (em pacotes)''. Ao compararmos o envio 
+de 1 pacote, logo utilizando 1 dos 4 DS-Links disponíveis, o tempo de demora é um. 
+Porém, se estivermos mandando mais de um pacote, logo utilizando mais de um DS-Link,
+ o tempo por pacote cai, ainda que o tempo total aumente. Isto se deve ao fato de 
+que o VCP processa os dados a serem enviados seqüencialmente, o que obrigatoriamente
+ nos leva a um aumento do tempo, mas vemos que o simples fato de enviar 2 pacotes 
+quase simultaneamente reduz o tempo total cerca de 16\% (essa taxa reduz quanto 
+maior o número de chaves na conexão chegando até 11\%). Se enviarmos 3 pacotes a taxa 
+de redução chega a 23\%, para 4, a 26\% e assim segue até que esta taxa atinja o 
+valor de 34\%,  
+quando enviamos mais de 300 pacotes utilizando os 4 DS-Links. Esta taxa pode ser 
+mencionada como taxa de saturação, i.e., representa o máximo na otimização de 
+comunicação atingível (para conexões do tipo 1) usando 4 canais simultâneos, ao invés 
+de apenas 1. 
+
+Estes resultados mostram que o envio de mais de 4 pacotes nesta situação (uma tarefa 
+por processador) parece ser uma característica interessante em termos de otimização.
+Os processos podem ser ajustados para que o volume de comunicações não seja menor do
+que 4 pacotes por vez. Pelo fato da rede estar totalmente conectada através de chaves 
+assíncronas e os DS-Links terem cada um uma conexão com a rede, se usarmos 
+a configuração de uma tarefa (sem processos concorrentes) por processador, nunca 
+teremos congestionamento de dados. 
+
+Depois do entendimento do processo de comunicação e troca de dados, veremos as 
+implementações propostas no capítulo~\ref{chap:project}.
+
+\section{Resultados para a GDU}
+
+\subsection{Replicando o JETNET}
+\secl{gdu_single}
+
+Implementamos 2 processos distintos para a unidade de decisões globais; no primeiro 
+tentamos replicar os resultados obtidos com o pacote JETNET no ambiente do sistema 
+TN310 (InMOS C), usando os pesos, \eng{thresholds} e vetores de normalização achados 
+durante a fase de treinamento neste primeiro ambiente (JETNET). A 
+tabela~\tabr{eficience_ic} mostra os resultados de eficiência obtidos  
+utilizando o programa do apêndice~\ref{ap:global1}. Quando mencionamos eficiência de
+uma RNA queremos destacar sua capacidade no reconhecimento de padrões, assim, uma 
+eficiência de 90\% significa que de cada 100 partículas de um dado tipo a rede 
+consegue \textbf{corretamente} identificar 90 e, assim, sucessivamente.
+
+\begin{table}
+ \caption[As eficiências para a rede 12-6-4 da GDU usando InMOS C.]{As eficiências 
+para a rede 12-6-4 da GDU usando InMOS C. Os valores para $\pi^{-}$ não foram 
+computados por não representarem um volume de dados expressivo. As marcas ``---'' 
+indicam que não aconteceram partículas daquele tipo no arquivo de entrada.}
+ \tabl{eficience_ic}
+ \begin{center}
+  \begin{tabular}{|c|c|c|c|c|} \hline
+             & $4e^{-}$ & $2e^{-}+2j$ & $2e^{-}+2\mu$ & $4\mu$ \\ \hline \hline
+  $e^{-}$ & 97.45 & 99.50 & 94.75 & ---\\ \hline
+  $jets$ & 93.40 & 96.13 & 96.40 & 100\\ \hline
+  $\mu$ & --- & 94.44 & 100 & 99.95\\ \hline
+  \end{tabular}
+ \end{center}
+\end{table}
+
+O tempo de processamento médio por RoI foi de 200 microssegundos. Este tempo leva
+em consideração somente o processamento neuronal da RoI; a leitura e escrita em 
+disco foram realizadas sem contar tempo de processamento. O casamento perfeito entre
+a tabela~\tabr{eficience} e a tabela~\tabr{eficience_ic} mostra a validade da 
+substituição do cálculo utilizando séries (\raw{tanh()}) por uma tabela de conversão. 
+Esta substituição também reduz o tempo de processamento requerido por RoI.
+
+\subsection{A GDU concorrente}
+
+A segunda versão do programa, operando em 15 nós no sistema TN310; foi executada em 2
+configurações: na primeira alocamos os processos como descrito na 
+tabela~\tabr{aloc_v1}.
+
+\begin{table}
+ \caption{A GDU concorrente, versão 1 - Mapa de alocação de processos.}
+ \tabl{aloc_v1}
+ \begin{center}
+  \begin{tabular}{|c|c|} \hline
+  Tarefa & Processador \\ \hline \hline
+  Supervisor & 0 \\ \hline
+  15 GDU-s & 1 ao 15 \\ \hline
+  \end{tabular}
+ \end{center}
+\end{table}
+
+Optamos por esta configuração para demostrarmos que diferentes posicionamentos dos 
+processos podem nos levar a resultados bem diferentes. O tempo de processamento 
+encontrado para uma ROI foi, aproximadamente, de 30,3 microssegundos. Consideramos o 
+fator de   
+agilização da aplicação (\eng{speed-up}) como a relação entre o tempo gasto para 
+processar 1 RoI na aplicação construída em apenas um nó do sistema TN310 e o tempo 
+gasto para processar 1 RoI em qualquer outra configuração da mesma aplicação 
+operando em mais de um nó de processamento do sistema. Neste caso, o \eng{speed-up} da 
+aplicação, quando a comparamos com a versão que roda em apenas 1 nó de processamento
+este resultado de 30,3 $\mu s$ por RoI, fica em torno de 6,6.
+
+Se utilizarmos a organização apontada na tabela~\tabr{aloc_v2}, o tempo de 
+processamento por evento cai para cerca de 27 microssegundos por RoI. Isto nos leva 
+a um \eng{speed-up} de 7,4.
+
+\begin{table}
+ \caption{A GDU concorrente, versão 2 - Mapa de alocação de processos.}
+ \tabl{aloc_v2}
+ \begin{center}
+  \begin{tabular}{|c|c|} \hline
+  Tarefa & Processador \\ \hline \hline
+  Supervisor & 15 \\ \hline
+  15 GDU-s & 0 ao 14 \\ \hline
+  \end{tabular}
+ \end{center}
+\end{table}
+
+\subsection{Conclusões sobre a unidade de decisões globais}
+
+Os dados recolhidos aqui, sem contar com as eficiências, representam a média 
+aritmética de milhares de iterações. Isto significa que estes dados estão tão 
+próximos dos valores médios quanto foi possível chegar. De forma nenhuma os valores 
+aqui apresentados representam dados espúrios ou ocasionais.
+
+\paragraph{A tabela de conversão.} A utilização da tabela de conversão provou-se 
+muito eficiente como forma de substituição da aritmética complexa envolvida no 
+cálculo de funções como a tangente hiperbólica. Neste caso específico, a substituição
+da função implementada por expansão em série por uma tabela de conversão mostrou-se
+ideal, visto que consiguimos diminuir o tempo de processamento sem termos reduzido a 
+eficiência de separação da rede.
+
+\paragraph{O tempo de processamento em 1 nó.} O tempo de processamento por RoI em 1 
+nó encontrado (200 $\mu s$) é representativo do processamento neural da RoI, não 
+incluindo de forma alguma as rotinas de leitura e escrita dos dados de cada RoI. O 
+processamento neuronal, neste caso específico, consiste de 86 somatórios, 72 
+multiplicações e 10 ativações. Sabendo que 1 ciclo de um processador dura no mínimo 
+1 microssegundo\footnote{Embora o \eng{clock} seja de 20MHz (50ns por pulso) cada ciclo do 
+\eng{transputer} é executado em 1 microssegundo para processos em alta prioridade e em 
+64ms para processos em baixa prioridade.} e que realizamos 168 operações distintas,
+sendo que 10 delas são mais complexas (ativação da \raw{NET} dos neurônios) diríamos 
+que o valor de 200$\mu s$ por RoI é bem satisfatório e coerente.
+
+\paragraph{Alocação de tarefas.} Uma diferença de até 10\% no tempo de processamento
+ pode ser observado se realocarmos de forma eficiente os processos. Este fator 
+exemplifica que o bom programador é aquele que conhece o equipamento com que 
+trabalha, pois desta forma consegue aproveitar o máximo de cada recurso.
+
+\paragraph{O \eng{Speed-up}.} O valor para o \eng{speed-up} de 7,4 é um bom 
+resultado. O valor máximo para esta característica é, no caso específico de 15 
+escravos concorrentes, 15. Uma vez que o tempo gasto na comunicação introduz uma 
+seqüencialização na aplicação, como visto na seção \secr{data_par}, é de se esperar 
+que este fator de agilização se reduza drasticamente. 
+
+De uma forma geral, a aplicação de várias técnicas como o paralelismo de dados, a 
+conversão de valores por tabelas e a otimização baseada na organização de 
+\eng{hardware} conseguiram multiplicar em até 7,4 vezes a velocidade de execução de 
+uma rede neuronal. A utilização de uma máquina de processamento distribuído neste 
+caso mostrou-se eficaz.
+
+\section{Resultados para a implementação do segundo nível de \eng{trigger}}
+
+Apresentaremos aqui os resultados obtidos com as 3 versões de implementação para o 
+segundo nível de validação do experimento ATLAS/LHC. Destacamos aqui, como fizemos 
+anteriormente, que atingimos a máxima otimização através de várias implementações 
+como se seguem. 
+
+\subsection{Resultados para o algoritmo completo rodando em apenas 1 processador}
+
+Foi simulado o processamento completo de uma RoI, 100 vezes (para tirarmos uma 
+média), utilizando-se de apenas um nó de processamento. Este processamento consiste 
+em, sequencialmente, extrair-se as características da RoI e passá-la na rede neural 
+12-6-4 das unidades de decisão global. O tempo de processamento para cada RoI foi de 
+1,7 ms em média. Este processamento não inclui, é claro, a parte relativa às Redes 
+Locais, que só têm sentido de implementação em sistemas distribuídos. Isto se deve 
+ao fato de que Redes Locais representam processos de distribuição e recolhimento de 
+dados, o que não ocorre em uma versão seqüencial da aplicação, pois não há 
+distribuição dos dados por um sistema complexo. Os dados mantêm-se em uma única 
+unidade de processamento por todo o tempo.
+
+Os tempos simulados para os algoritmos de extratores estavam de acordo com os dados
+da tabela~\tabr{fexor_proc}.
+
+O valor de 1,7 ms será utilizado para calcularmos o \eng{speed-up} das aplicações 
+que se seguem. Utilizaremos o mesmo critério de cálculo utilizado na avaliação da 
+agilização para a unidade de decisões globais: dividiremos o tempo de processamento 
+de uma RoI processada por apenas um nó pelo tempo gasto para processar uma RoI em 
+configurações que utilizem mais de um nó de processamento, como as que se seguem; 
+assim, chegaremos ao que consideramos o \eng{speed-up} da aplicação.
+
+\subsection{Resultados para a versão 1}
+
+Ao executarmos esta versão chegamos aos resultados contidos na 
+tabela~\tabr{simul_1_results}.
+ 
+\begin{table}
+ \caption{Os resultados obtidos com a implementação da primeira versão do simulador 
+para o sistema de validação. Totais para 500 RoI-s.}
+ \tabl{simul_1_results}
+ \begin{center}
+  \begin{tabular}{|c|c|c|} \hline
+  & Tempo ($ms$) & \% do tempo total \\ \hline \hline
+  Distribuição de dados para Extratores & 365.079 & 87,93 \\ \hline
+  Perda com verificações redundantes & 29.580 & 7,12 \\ \hline
+  Total de aplicação & 415.189 & 100 \\ \hline
+  \end{tabular}
+ \end{center}
+\end{table}
+
+Podemos perceber que o maior ``gargalo'' de nossa aplicação encontra-se na distribuição 
+de dados para os extratores de característica, somando aproximandamente 90\% do 
+tempo total da aplicação. Embora existam técnicas para otimizar a comunicação entre 
+tarefas, não há como eliminarmos por completo ou em boa parte o tempo gasto nesta 
+distribuição. Isto se deve a fatores puramente lógicos: a passagem de dados da 
+aplicação supervisora para os extratores de característica é necessária, ou não 
+teremos aplicação. Outro fator interessante a ser lembrado é que jamais 
+conseguiremos otimizar o fluxo de dados nesta aplicação, pois todos os canais com 
+extratores de característica demandam um alto volume de dados, portanto já 
+utilizando mais de um DS-Link por vez.
+
+O tempo de processamento para cada RoI fica em torno de 830 $\mu s$.
+O \eng{speed-up} é:
+\begin{displaymath}
+speed-up = \frac{1700}{830} = 2,05,
+\end{displaymath}
+que é um valor baixo.
+Tentamos a otimização por realocação dos processos como se segue.
+
+\subsection{Resultados para a versão 2}
+
+Ao realocarmos os processos de uma forma mais eficiente, esperamos que os tempos 
+gastos em comunicação se reduzam; desta forma teríamos um aumento do \eng{speed-up} 
+da aplicação. Os resultados estão na tabela~\tabr{simul_2_results}. Tentamos, 
+também, eliminar o tempo gasto com a verificação de extratores cujos os dados já 
+acabaram, tentando minimizar o tempo de processamento.
+
+\begin{table}
+ \caption{Os resultados obtidos com a implementação da segunda versão do simulador 
+para o sistema de validação. Totais para 500 RoI-s.}
+ \tabl{simul_2_results}
+ \begin{center}
+  \begin{tabular}{|c|c|c|} \hline
+  & Tempo ($ms$) & \% do tempo total \\ \hline \hline
+  Distribuição de dados para Extratores & 335.695 & 97,58 \\ \hline
+  Perda com verificações redundantes & 0 & 0 \\ \hline
+  Total de aplicação & 344.015 & 100 \\ \hline
+  \end{tabular}
+ \end{center}
+\end{table}
+
+O tempo gasto com a verificação de extratores parados foi totalmente retirado, ainda 
+que tenhamos sofrido alguma penalidade na redução das distâncias entre os processos, 
+a medida que tivemos que adicionar código para a eliminação deste tempo extra.
+
+O tempo de processamento para cada RoI baixou para 688 $\mu s$. Isto significa que o 
+\eng{speed-up} aumentou, vejamos:
+\begin{displaymath}
+speed-up = \frac{1700}{688} = 2,47.
+\end{displaymath}
+
+Embora estejamos próximos de um aumento de 20\%, estes ajustes ainda não 
+caracterizariam uma boa ``performance'' pelo equipamento. Visto que uma abordagem 
+tentando maximizar a utilização dos canais não aponta bons resultados, pois o único 
+canal a ser otimizado é para a distribuição de dados para extratores de múons, que 
+não se encontram tão distantes da otimização máxima, direcionamo-nos para a implementação 
+utilizando a distribuição circular de eventos, como abordado na 
+seção~\secr{simul_v3}.
+
+\subsection{Resultados para a versão 3}
+
+Esta versão tira proveito da sequencialização do processo de distribuição de eventos
+e de rotinas especiais, otimizadas para a utilização na implementação em alto nível
+de canais virtuais criados em \eng{hardware}, caso específico do Transputer T9000.
+Este conjunto de rotinas é conhecido como \raw{DirectChan-s}, e funciona de forma 
+idêntica às rotinas da tabela~\tabr{channel.h}, apenas de forma mais rápida.
+
+Os resultados desta versão de implementação encontram-se na 
+tabela~\tabr{simul_3_results}.
+\begin{table}
+ \caption{Os resultados obtidos com a implementação da terceira versão do simulador 
+para o sistema de validação. Totais para 500 RoI-s.}
+ \tabl{simul_3_results}
+ \begin{center}
+  \begin{tabular}{|c|c|c|} \hline
+  & Tempo ($ms$) & \% do tempo total \\ \hline \hline
+  Distribuição de dados para Extratores & 194.427 & 96 \\ \hline
+  Perda com verificações redundantes & 0 & 0 \\ \hline
+  Total de aplicação & 203.453 & 100 \\ \hline
+  \end{tabular}
+ \end{center}
+\end{table}
+
+O tempo para o processamento de uma RoI atinge, nesta implementação, cerca de 
+390 $\mu s$.
+O \eng{speed-up}:
+\begin{displaymath}
+speed-up = \frac{1700}{390} = 4,36.
+\end{displaymath}
+
+\subsection{Concluindo sobre o sistema de validação}
+
+Cabe aqui uma pequena revisão do processo de paralelização como um todo; para isto 
+repetiremos aqui algumas das figuras mostrando o processo de modelagem e implementação
+da aplicação. 
+
+Inicialmente estávamos diante de uma aplícação de difícil paralelização, mostrada 
+na figura~\figr{mod_b_implementation} e repetida aqui na 
+figura~\figr{conclusion_1}. Esta aplicação possui 2 níveis de paralelização 
+distintos, um segundo o seu fluxo, pois atua como um \eng{pipeline} processando os 
+dados no sentido dos extratores para as unidades de decisão global; e outro segundo seus 
+dados. Neste caso estaremos atuando sobre um volume de dados cuja natureza e 
+grandeza são as mesmas; poderemos, então, utilizar processamento repetido para que 
+agilizemos o processo como um todo.
+
+\begin{figure} 
+ \begin{center}
+ \caption{O diagrama da aplicação implementada no sistema TN310.} 
+ \figl{conclusion_1} 
+ \input{picts/mod_b_i.pic}
+ \end{center}
+\end{figure} 
+
+A aplicação destas duas técnicas neste último diagrama (figura~\figr{conclusion_1}) 
+nos leva ao diagrama de tarefas da figura~\figr{conclusion_2}. Este diagrama foi 
+arranjado de forma a maximizar a utilização dos processadores e minimizar as cargas
+sobre cada nó de processamento, balanceando o sistema.
+                                                              
+\begin{figure} 
+ \begin{center}
+ \caption{As tarefas da aplicação.} 
+ \figl{conclusion_2} 
+ \input{picts/simul1.pic}
+ \end{center}
+\end{figure} 
+
+O \eng{speed-up} para tal aplicação virá, portanto, na forma de 2 características 
+adicionadas à execução do sistema, sua paralelização de dados e sua paralelização de
+fluxo. Se somente pudéssemos observar o paralelismo de dados, o \eng{speed-up} 
+máximo a ser encontrado estaria entre 2 e 3, pois possuímos apenas 2 unidades 
+concorrentes  
+para extratores de calorímetro e múons, ainda que tenhamos operando 3 unidades de 
+processamento para extratores de TRT e 3 para SCT.
+
+Porém, a existência de um paralelismo de fluxo nos leva a um acréscimo substancial no
+\eng{speed-up} máximo atingível. Este acréscimo é diretamente proporcional ao número de 
+subprocessos do \eng{pipeline} que estão sendo executados paralelamente. Neste caso 
+temos 2 subprocessos paralelos, a extração de características e a decisão global, 
+levando-nos a um \eng{speed-up} máximo entre 4 e 6. Isto pode ser visualizado com um 
+simples exemplo:
+
+\begin{quotation}
+Imaginemos uma linha de montagem para automóveis. Um automóvel demora um tempo $x$ 
+para ser construído. Porém se tivermos $y$ trabalhadores especilizados na montagem 
+de partes exclusivas do automóvel, de forma que consigam terminar todo um veículo sem
+ajuda de mais trabalhadores, estes conseguirão imprimir uma velocidade maior no 
+processamento de veículos. No caso idealizado, quando a linha de montagem já se 
+encontra operacional (as diversas partes já possuem trabalho a ser feito) teremos a 
+produção de $y$ veículos no mesmo tempo $x$.
+\end{quotation}
+
+De forma mais genérica, se utilizarmos paralelismo de fluxo em uma aplicação que 
+processa infinitamente, o \eng{speed-up}, quando o número de produtos finais 
+aumenta, tenderá ao número de subtarefas que são executadas simultaneamente. Assim, 
+se 2 passos forem fluxo-paralelizados, o \eng{speed-up} será, quando o número de 
+dados processados for grande o suficiente, 2. Para 3 passos paralelizados, o 
+\eng{speed-up} passa para 3 e, assim, sucessivamente.
+
+O resultado obtido para o \eng{speed-up} em nossa aplicação foi de aproximadamente 
+4,4. Este resultado exprime quase 100\% do \eng{speed-up} máximo da aplicação, 
+\underline{na configuração exposta}. Seria de valor reduzido tentarmos reprojetá-la de 
+forma a aumentarmos o \eng{speed-up} máximo atingível\footnote{Isto seria possível 
+se realocássemos 2 das 3 unidades de decisão global para trabalharem como os 
+extratores ausentes para os subsistemas de calorímetro e múon.}, pois o tempo gasto 
+com a distribuição de dados atinge, na máxima otimização, enormes 96\% do tempo 
+total de aplicação. Isto reflete que o rearranjo jamais se traduziria em aumento do
+\eng{speed-up} final de forma significativa, podendo até reduzí-lo por estarmos 
+desbalanceando o peso em cima das subtarefas de nossa aplicacação (deixando apenas 
+uma unidade de decisão global operando, sem aplicarmos paralelismo de dados).
+
+\subsubsection{O sistema para o processamento de segundo nível}
+
+Por outro lado, o resultado obtido utilizando-se apenas 1 nó de processamento nos 
+mostra que, talvez, para uma aplicação que não esta, fosse mais viável a utilização 
+de muitos processadores operando sobre todo uma RoI (extração de característica e 
+decisão global) do que a distribuição do processo por várias subtarefas. No entanto,
+isto feriria a configuração proposta para a arquitetura B (não factível, segundo 
+\cite{level2:tsr}) do segundo nível de 
+validação. De fato, este esquema estaria mais adaptado à arquitetura C para o 
+segundo nível, cuja implementação através de nosso equipamento seja inviável, 
+pois requeriria a utilização de chaves muito rápidas (ATM), que não se encontram 
+disponíveis.
+
+O fato de não possuirmos nós em número grande o suficiente para 
+que consigamos suportar a taxa de fluxo do segundo nível de validação (100MHz), é, 
+possivelmente a causa deste resultado. O tempo de processamento para uma RoI beira 
+os 390 microssegundos; sabendo que o número de RoI-s por evento é, na média, de 5, isto
+nos dá um tempo de processamento de cerca de 2 ms por evento, que é um valor 
+baixo. Baixo porque não estamos considerando aqui duas importantes etapas do 
+processamento de um evento, o preprocessamento que consta da transformação da RoI 
+geométrica disparada pelo nível 1 na RoI real, como explanado na seção~\secr{preproc}
+ e a decisão sobre o canal físico do evento, parte integrante da tarefa de decisões 
+globais. Levando isto em consideração, os 2 ms, ainda assim, representam 
+a inexpressiva taxa de 500 Hz, baixíssima para suportar a operação do segundo nível 
+de \eng{trigger}.
+
+\subsubsection{Máximos e mínimos}
+\secl{max_min}
+
+Ao construirmos a aplicação para a unidade de processamento global percebemos que, 
+ainda que utilizando distribuição circular (\eng{Round-Robin}), atingimos um 
+\eng{speed-up} de 7,4 utilizando a configuração da figura~\figr{gdu_full}. O 
+\eng{speed-up} máximo previsto, no entanto, era de 15, pois estávamos lidando com 15
+escravos.
+
+A questão é: ``Porque o máximo que consiguimos foi 7,4?''. A resposta é um tanto 
+complexa e nos basearemos nos resultados da tabela~\tabr{time} para que a 
+respondamos.
+
+A distribuição circular provou-se útil pois, sempre que atingíamos o último escravo,
+o primeiro já estava livre; assim, jamais precisaríamos questionar a ocupação de um 
+dado escravo já que saberíamos de ante-mão que ele estaria apto a receber novos 
+dados e repassar os dados antigos já processados, se a distruição mantivesse a ordem
+(circular) inicial. Com este conhecimento é possível formular esta pergunta: ``Qual é 
+o número \underline{mínimo} de escravos que necessito para que o primeiro 
+\textbf{sempre} esteja livre quando o supervisor passar dados para o último?''. A 
+resposta desta pergunta pode nos levar a 2 novos caminho de implementação:
+
+\begin{enumerate} 
+ \item{\bf Reduzir o número de escravos:} Assim será se o número de 
+processos-escravos necessários para mantermos fluxo de dados ininterrupto no 
+supervisor for menor do que o que estamos utilizando (15). Isto significa que mais 
+de um escravo está ``parado'' quando dados são distribuídos para o último.
+ \item{\bf Emular mais escravos:} Assim será se o número de escravos necessários 
+para manter o fluxo de dados constante e ininterrupto no supervisor for maior que o 
+que temos agora (15).
+\end{enumerate}
+
+Caso a resposta seja a primeira, deveremos provar que isto é verdade reduzindo o 
+número de escravos ao número projetado e verificando se não há degradação da 
+``performance'' do sistema. Neste caso, mediremos isto pelo \eng{speed-up} da 
+aplicação, se este reduzir, 
+ notaremos que houve prejuízo na redução do número de escravos indicando 
+necessidade de maior número destes processos. Caso não reduza comprovaremos que este
+ desenvolvimento é coerente e que estamos atingindo o \underline{máximo} desta 
+aplicação \underline{na configuração proposta}.
+
+Caso a resposta seja a segunda, deveremos implementar um sistema de emulação. 
+Durante uma emulação acontece uma espécie de \textit{ensaio} onde simular-se-á o 
+número de nós-de-processamento que serão suficientes para que atinjamos um fluxo de 
+dados ininterrupto na aplicação supervisora. Assim, se chegarmos, por exemplo, que 
+o número de escravos necessário é 30 devemos alocar em cada nó de processamento uma 
+unidade de decisão global que recebe 2 RoI-s, mas que, na realidade, gasta o tempo de 
+processamento de uma única região ``emulando'' a existência de mais 
+nós-de-processamento, neste caso 2.
+
+Uma unidade de decisão global, segundo a seção~\secr{gdu_single}, demora 200 $\mu s$
+para processar uma RoI. A passagem de dados de/para escravos, como pode ser 
+visto na aplicação descrita no apêndice~\ref{ap:sup_global}, acontece quando a 
+aplicação supervisora recolhe os dados processados anteriormente pelo escravo e 
+repassa novos dados para serem processados. Numa situação onde existam somente 
+conexões do tipo 1 (isto é, com uma chave apenas ligando os processos supervisor
+ e escravo) o tempo gasto nesta atividade será de, no mínimo, 27 microssegundos. 
+Este número vem do seguinte cálculo: cada unidade de decisão global consome 12 
+números em ponto flutuante (reais); isto consome 48 bytes, que, segundo a 
+seção~\secr{time}, deve ser divido em 2 pacotes que demorarão (em uma conexão do 
+tipo 1) cerca de 17 $\mu s$ para que sejam entregues. Já os dados processados são em
+número de 4 (reais) e consomem 16 bytes que podem ser enviados à aplicação 
+supervisor por através de um único pacote que leva cerca de 10 $\mu s$ para que seja
+recebido (talvez um pouco mais). Esta troca de dados consumirá, então, os 27 $\mu s$
+mencionados.
+
+Levando estes dados em consideração necessitaremos de
+\begin{displaymath}
+\frac{200 \mu s}{27 \mu s} \approx 7,4 (\Longrightarrow 8)
+\end{displaymath}
+escravos. Isto quer dizer que, se tivermos 8 escravos para distribuirmos dados 
+\textbf{depois} de distribuirmos dados para o primeiro escravo, este, e somente este, 
+estará livre  
+quando acabarmos de distribuirmos dados para o último escravo. Seguindo a lógica, o 
+segundo processo escravo, e somente este, estará livre quando acabarmos de 
+distribuir dados para o primeiro e, assim, sucessivamente.
+
+Isto está de acordo com a primeira assunção que fizemos alguns parágrafos 
+acima no texto: o número de escravos é menor que 15, isto significa que não 
+precisaremos emular uma versão da unidade de decisão global concorrente. Devemos 
+então, a partir do esquema da figura~\figr{gdu_full} ir eliminado o número de 
+escravos e verificar quando temos degradação de performance do sistema. De fato, 
+como é possível ver na tabela~\tabr{max_glob} a ``performance'' do sistema não cai 
+até que usemos menos de 9 escravos na GDU concorrente, re-afirmando a validade dos 
+dados da tabela~\tabr{time} e das assunções de funcionamento do sistema expostas 
+anteriormente.
+
+\begin{table}
+ \caption{Os resultados para a GDU concorrente quando reduzimos o número de 
+processos escravos.}
+ \tabl{max_glob}
+ \begin{center}
+  \begin{tabular}{|r|c|c|} \hline
+ Número de escravos & Tempo para 1 RoI & \eng{speed-up} \\ \hline \hline
+ 15 & 27 $\mu s$ & 7,4 \\ \hline
+ 10 & 27 $\mu s$ & 7,4 \\ \hline
+{\bf  9} & {\bf 27 $\mu s$} & {\bf 7,4} \\ \hline
+{\bf  8} & {\bf 28,5 $\mu s$} & {\bf 7,0} \\ \hline
+  7 & 32,5 $\mu s$ & 6,2 \\ \hline
+  5 & 44,6 $\mu s$ & 4,5 \\ \hline
+  3 & 74,2 $\mu s$ & 2,7 \\ \hline
+  \end{tabular}
+ \end{center}
+\end{table}
+
+Outra importante observação é que o valor calculado (7,4) é, exatamente, o 
+\eng{speed-up} máximo para esta configuração e, ao mesmo tempo, o número de escravos
+(menos 1) necessários para que o supervisor mantenha-se sempre distribuindo dados.
+
+É possível levantarmos as mesmas questões para o segundo nível de validação: ``Será 
+que estamos usando processadores demais?''. Esta questão deve ser respondida da 
+mesma forma que respondemos a questão similar para a GDU. Aqui, porém, deveremos nos
+ concentrar na parte de distribuição de dados que mais pesa ao funcionamento do 
+sistema como um todo, que é a distribuição de dados para os extratores de 
+característica. 
+
+Esta distribuição acontece, diferentemente da que acontece na GDU concorrente, 
+somente no sentido do supervisor para as unidades de extração e leva tempos 
+distintos para diferentes sistemas de extração. A tabela~\tabr{time:ext} pode ser 
+elucidativa quanto aos tempos gastos em conexões do tipo 1 para a passagem de dados 
+do supervisor para os extratores. Já a tabela~\tabr{time_proc:ext} mostra os tempos 
+de processamento de cada unidade.
+
+\begin{table}
+ \caption{Tempos gastos na passagem de dados da aplicação supervisora para os 
+extratores.}
+ \tabl{time:ext}
+ \begin{center}
+  \begin{tabular}{|l|c|c|c|} \hline
+Tipo de extrator & Tamanho (em bytes) & Tamanho (em pacotes) & Tempo \\ \hline 
+\hline
+Calorímetro & 504 & 16 (15,75) & 111 $\mu s$ \\ \hline
+TRT & 420 & 14 (13,13) & 98 $\mu s$ \\ \hline
+SCT & 420 & 14 (13,13) & 98 $\mu s$ \\ \hline
+Múon & 60 & 2 (1,88) & 17 $\mu s$ \\ \hline
+  \end{tabular}
+ \end{center}
+\end{table}
+
+\begin{table}
+ \caption{O tempo gasto em processamento dos dados em cada tipo de extrator de 
+característica.}
+ \tabl{time_proc:ext}
+ \begin{center}
+  \begin{tabular}{|c|c|} \hline
+  Tipo de extrator & Tempo \\ \hline \hline
+  Calorímetro & $10\mu s$ \\ \hline
+  TRT & $400\mu s$ \\ \hline
+  SCT (PreShower) & $250\mu s$ \\ \hline
+  Múon & $5\mu s$ \\ \hline
+ \end{tabular}
+ \end{center}
+\end{table}
+
+Para que seja possível atender o maior dos tempos de processamento (desta forma 
+estaremos atendendo também os menores), neste caso o do extrator para o TRT (400 
+$\mu s$, deveremos ter tempos de comunicação com outros extratores quaisquer 
+(inclusive com outros extratores para TRT), o mais próximo possível, ainda que maior,
+ de 400 $\mu s$. Para que isto se concretize, \textbf{qualquer} configuração que 
+atenda este critério poderá ser a configuração mínima para sistema. 
+
+Assim podemos pensar em várias destas configurações como se seguem:
+\begin{enumerate} 
+ \item {\bf 1 Ext.TRT, 2 Ext.SCT, 2 Ext.Calorímetro e 1 Ext.Múon};
+ \item {\bf 1 Ext.TRT, 3 Ext.SCT, 1 Ext.Calorímetro e 1 Ext.Múon};
+ \item {\bf 2 Ext.TRT, 1 Ext.SCT, 2 Ext.Calorímetro e 1 Ext.Múon};
+ \item {\bf 2 Ext.TRT, 1 Ext.SCT, 1 Ext.Calorímetro e 6 Ext.Múon}
+ \item etc 
+\end{enumerate}
+
+Se o leitor somar os tempos de comunicação, verá que esta soma é mais que suficiente para
+cobrir quaisquer dos tempos de processamento. Desta forma, quando o dado for passado 
+para o extrator anterior a alguma unidade, esta já estará livre para receber mais 
+dados, sempre. Para testarmos isto, projetamos um sistema muito parecido com o sistema da 
+figura~\figr{conclusion_2}, porém, constando somente de 2 extratores para cada sub-sistema 
+de deteção (ao invés de 2 para calorímetro, 3 para TRT, 3 para SCT e 2 para Múon) e 
+constando de apenas 2 unidades de decisão global.
+
+A razão de termos utilizado apenas 2 unidades vem do fato que, como temos 
+distribuição circular, o tempo que o sistema demorará até que dados a serem 
+analizados pelas unidades de decisão global estejam prontos, está em torno de 1,4 ms 
+(tempos de processamento dos extratores somados), ainda que a cada 1,4 ms 2 RoI-s 
+estejam prontas quase que simultaneamente. Para evitar ``gargalos'' 2 unidades de 
+decisão global foram alocadas, desta forma, satisfazendo o fluxo de dados do 
+sistema. Seria possível reduzir, ainda, o número de unidades de decisão global de 2 
+para 1 se, ao invés de distribuirmos dados para 2 extratores de TRT, em seguida 2 
+extratores de SCT e, assim, sucessivamente, fizéssemos isto de forma intercalada, ou
+seja, passássemos os dados para 1 extrator de TRT, em seguida para 1 extrator de 
+SCT, daí para o de calorímetro e para o de múon, somente aí, então, passaríamos 
+dados para os segundos extratores de cada subsistema. Desta forma, a aplicação 
+produziria, ao invés de 2 RoI-s quase que simultaneamente a cada 1,4 ms, 1 RoI a 
+cada 700 $\mu s$. Uma vez que a unidade de decisão global demora apenas 200 $\mu s$ 
+para processar uma RoI completa, utilizar somente uma destas aplicações não criaria 
+``gargalo'' neste sistema.
+
+A rodarmos a aplicação sugerida verificamos que o tempo de processamento para uma 
+RoI permaneceu em 390 $\mu s$, confirmando nossas expectativas. Isto se traduz no 
+fato de que utilizar 3 unidades de decisão global, 3 extratores para TRT e 3 
+extratores para SCT durante a simulação constitui-se uma redundância desnecessária. 
+\underline{Para a configuração proposta} atingimos um \eng{speed-up} máximo de 4,4, 
+sem que utilizemos todo o potencial de processamento da máquina. Isto se deve 
+basicamente a ``lentidão'' no processo de comunicações quando utilizamos 
+\eng{Transputers} conectados por redes de chaves STC104.
+
+\subsubsection{Conclusões gerais e principais resultados}
+
+Construímos um sistema de decisão global que consegue reproduzir fielmente os 
+resultados obtidos com pacotes especializados de treinamento e teste de redes 
+neurais em ambientes UNIX (JETNET 2.0). Este sistema é uma aplicação capaz de rodar 
+em uma TN310 operando em um único nó ou em até 15 nós. Para este projeto, de forma a
+reduzir o tempo de processamento requerido pela unidade, resolvemos por utilizar a 
+ativação neuronal por \eng{Look-up} ao invés de utilizarmos a função residente 
+\raw{tanh} do ANSI C. Isto reduziu o tempo de processamento da unidade sem que 
+tenhamos perdido qualidade no reconhecimento de padrões da rede. O menor tempo de 
+processamento para cada RoI atingido foi 390 microssegundos.
+
+Consideramos como \eng{speed-up} a relação entre o tempo de processamento para um 
+dado (RoI) no sistema operando em apenas 1 nó e o tempo de processamento de um dado 
+no sistema operando em mais de 1 nó. Encontramos um \eng{speed-up} máximo de 7,4 
+para a aplicação em questão.
+
+Em aplicações como esta uma unidade supervisora é responsável pela distribuição e 
+recolhimento dos dados processados pelas tarefas escravas. Verificamos 
+(tabela~\tabr{max_glob}) que a  
+utilização de 15 nós de processamento é desnecessária, já que o supervisor (em 
+casos da unidade estar rodando com mais de um nó) permanecerá distribuindo dados 
+ininterruptamente se o número de unidades de decisão global (aplicações escravas) não 
+for inferior a 9. Desta forma conclui-se que utilizar 16 nós de processamento para a
+aplicação nesta configuração é desnecessário.
+
+Isto se deve basicamente ao fato da tecnologia em questão (\eng{transputers} 
+acoplados via STC104-s) não constituirem uma base eficiente o bastante para que o 
+\eng{speed-up} aumente com o número de nós-escravos. Estas conclusões abrangem
+somente o caso específico da aplicaçao na configuração mostrada na 
+figura~\figr{gdu_full} e cujo volume de dados é tal como o descrito na 
+seção~\secr{max_min}.
+
+Depois de construirmos a unidade de decisões globais passamos ao projeto de parte 
+do segundo nível de validação para o experimento ATLAS/LHC 
+(figura\figr{conclusion_1}). Esta aplicação \textbf{deve} ser paralelizada para que 
+atinjamos o menor tempo de processamento possível para uma RoI utilizando o 
+equipamento disponível (TN310). Para isto utilizamos técnicas de paralelismo de fluxo 
+e dados na construção da aplicação vista na figura~\figr{conclusion_2}. Conseguimos 
+chegar a um tempo de processamento por RoI de aproximadamente 390 $\mu s$. Isto, 
+como vimos na seção~\secr{max_min}, traduz o limite do sistema \underline{para as 
+configurações} expostas na seção anterior. O \eng{speed-up} encontrado foi de 4,4 
+quando comparamos esta aplicação com outra que executava as mesmas funções em um só 
+nó de processamento (versão \eng{single}). 
+
+Não obstante a estes fatos, provamos que a utilização de recursos híbridos de 
+paralelização de aplicações mostra-se em vantagem contra a aplicação de apenas um 
+dos métodos de paralelização expostos. O conhecimento do sistema como um todo nos 
+levou a uma otimização significativa na velocidade de processamento; consiguimos 
+atingir quase 100\% do \eng{speed-up} máximo desta aplicação utilizando os recursos do 
+sistema de forma a maximizar a configuração proposta. Por 
+final, a distribuição circular de eventos por processos escravos, pode, dependendo 
+do caso onde se emprega\footnote{Neste caso específico temos o tempo de 
+processamento das unidades extratoras muito menor do que o tempo que demoramos 
+para passar os dados para os diversos escravos. Ainda, foi detectado que o tempo de 
+\eng{hand-shake} para qualquer dos extratores era um valor alto, cerca de 45 $\mu 
+s$, 
+que eram adicionados a cada tempo de canal.}, ser muito mais vantajosa do que a 
+utilização de processamento sob-demanda. Obtivemos cerca de 40\% de redução no tempo de
+distribuição, comparando a abordagem 3 com a abordagem utilizada na segunda versão 
+do programa para o segundo nível de validação.
+
+No próximo capítulo (\ref{chap:discuss}), estaremos discutindo algumas possíveis 
+extensões deste trabalho e a possibilidade da inclusão de mais tarefas neste 
+processamento.
+
+
+
